@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HCS Recursion - Hedera Wallet Connect Game</title>
+
+    <script
+      data-hcs-config
+      data-hcs-cdn-url="https://tier.bot/api/hashinals-cdn/"
+      data-hcs-network="mainnet"
+      data-hcs-debug="true"
+      data-hcs-retry-attempts="5"
+      data-hcs-retry-backoff="500"
+      data-hcs-show-loading-indicator="true"
+      data-hcs-loading-callback-name="setLoadingIndicator"
+    ></script>
+    <script data-src="hcs://1/0.0.6614307" data-script-id="threejs"></script>
+    <script data-src="hcs://1/0.0.6627067" data-script-id="animejs"></script>
+    <script
+      data-src="hcs://1/0.0.6633438"
+      data-script-id="nes-css"
+      type="css"
+    ></script>
+    <script
+      data-src="hcs://1/0.0.6628687"
+      data-script-id="rust-wasm"
+      type="wasm"
+    ></script>
+    <script
+      data-src="hcs://1/0.0.6662611"
+      data-script-id="wallet-connect"
+    ></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000033;
+        font-family: 'Press Start 2P', cursive;
+        color: #fff;
+      }
+      canvas {
+        display: block;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border: 4px solid #fff;
+      }
+      #game-ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      wcm-modal {
+        z-index: 9999;
+        position: relative;
+      }
+      #overlay {
+        position: relative;
+        max-width: 400px;
+        top: 20px;
+        left: 20px;
+        margin-bottom: 20px;
+        margin-top: 20px;
+        color: #00ffff;
+        font-size: 24px;
+        text-shadow: 0 0 10px #00ffff;
+      }
+      #loading-indicator {
+        position: relative;
+        top: 60px;
+        left: 20px;
+        width: 300px;
+      }
+      #author-section {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+      }
+      #author-avatar {
+        width: 50px;
+        height: 50px;
+        image-rendering: pixelated;
+        border: 4px solid #fff;
+        margin-right: 10px;
+      }
+      #author-name {
+        font-size: 16px;
+      }
+      #controls {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        font-size: 14px;
+        z-index: 1000;
+      }
+      #controls button,
+      #controls select {
+        pointer-events: auto;
+        margin-top: 5px;
+      }
+      #score {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        color: #00ff00;
+      }
+      #difficulty-level {
+        z-index: 40;
+        display: block;
+      }
+      #wallet-section {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 16px;
+        text-align: right;
+      }
+      #wallet-section button {
+        pointer-events: auto;
+      }
+      #account-id {
+        margin-top: 10px;
+      }
+      #leaderboard-modal {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        max-width: 600px;
+        background-color: rgba(0, 0, 0, 0.9);
+        border: 4px solid #fff;
+        padding: 20px;
+        border-radius: 10px;
+        display: none;
+        z-index: 10;
+        pointer-events: auto;
+      }
+      #leaderboard-modal h3 {
+        text-align: center;
+        color: #fff;
+      }
+      #leaderboard-modal table {
+        width: 100%;
+        margin: 20px 0;
+      }
+      #leaderboard-modal table th,
+      #leaderboard-modal table td {
+        padding: 10px;
+        border: 1px solid #fff;
+        text-align: center;
+      }
+      #leaderboard-modal table th {
+        background-color: #1a1a1a;
+        color: #00ff00;
+      }
+      #close-leaderboard-btn {
+        position: absolute;
+        z-index: 500;
+        top: 10px;
+        right: 10px;
+        background-color: transparent;
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      #death-dialog {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        max-width: 600px;
+        background-color: rgba(0, 0, 0, 0.9);
+        border: 4px solid #fff;
+        padding: 20px;
+        border-radius: 10px;
+        display: none;
+        z-index: 10;
+        pointer-events: auto;
+      }
+      #death-dialog .nes-dialog {
+        background-color: #000033;
+      }
+
+      #mobile-menu-button-close {
+        display: none;
+      }
+
+      /* Mobile styles */
+      @media (max-width: 768px) {
+        canvas {
+          border: none;
+        }
+        #mobile-menu-button-close {
+          display: block;
+        }
+        #game-ui {
+          display: flex;
+          flex-direction: column;
+        }
+
+        #overlay {
+          position: relative;
+          left: 0;
+          max-width: 400px;
+          margin-top: 0px;
+          margin-left: 50px;
+          font-size: 16px;
+          text-align: center;
+          left: 0;
+          top: 0px;
+        }
+        #loading-indicator {
+          position: relative;
+          top: 0;
+          left: 0;
+          width: 100%;
+        }
+        #controls {
+          position: relative;
+          bottom: auto;
+          left: auto;
+          order: 2;
+          text-align: center;
+          margin-top: 20px;
+        }
+        #wallet-section {
+          position: relative;
+          top: auto;
+          right: auto;
+          order: 1;
+          text-align: center;
+          margin-top: 20px;
+        }
+        #score {
+          order: 0;
+          top: 50px;
+          margin-top: 20px;
+          font-size: 18px;
+        }
+        #author-section {
+          position: relative;
+          bottom: auto;
+          right: auto;
+          order: 3;
+          justify-content: center;
+          margin-top: 20px;
+        }
+        #mobile-controller {
+          display: flex;
+          background: black;
+          justify-content: space-between;
+          position: fixed;
+          bottom: 0px;
+          left: 50%;
+          transform: translateX(-50%);
+          margin-top: 50px;
+          z-index: 1000;
+        }
+        #mobile-controller button {
+          font-size: 24px;
+          padding: 10px 20px;
+          pointer-events: auto;
+        }
+        #mobile-slide-out {
+          position: fixed;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 33, 0.95);
+          transition: left 0.3s ease-in-out;
+          z-index: 2000;
+          padding: 20px;
+          overflow: scroll;
+        }
+        #mobile-slide-out.open {
+          left: 0;
+        }
+        .overlay {
+          z-index: 2000;
+        }
+        #mobile-menu-button {
+          display: block;
+          position: fixed;
+          top: 0px;
+          margin-right: 5px;
+          left: 5px;
+          z-index: 2001;
+          font-size: 24px;
+          pointer-events: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+    <div id="game-ui">
+      <div id="overlay" class="nes-container is-rounded is-dark">
+        HCS Recursion: Laser Balloon Popper
+      </div>
+      <div
+        id="loading-indicator"
+        class="nes-container is-rounded is-dark"
+      ></div>
+      <div id="author-section" class="nes-container is-rounded is-dark">
+        <img
+          id="author-avatar"
+          data-src="hcs://1/0.0.6529019"
+          alt="Kantorcodes Avatar"
+        />
+        <span id="author-name" class="nes-text is-primary"
+          >Built by <a href="https://x.com/kantorcodes">Kantorcodes</a></span
+        >
+      </div>
+      <div id="controls" class="nes-container is-rounded is-dark">
+        <p>Use Left/Right Arrows to Move, Space to Shoot.</p>
+        <p>Hit a bomb? Lose points. Touch a bomb? Lose the game.</p>
+        <label for="difficulty-level">Difficulty:</label>
+        <div class="nes-select is-success">
+          <select id="difficulty-level">
+            <option value="1">Easy</option>
+            <option value="2">Medium</option>
+            <option value="3">Hard</option>
+          </select>
+        </div>
+        <button id="shoot-btn" class="nes-btn is-error">Shoot Laser</button>
+        <button id="reset-btn" class="nes-btn">Reset</button>
+        <button id="view-leaderboard-btn" class="nes-btn">
+          View Leaderboard
+        </button>
+      </div>
+      <div id="score" class="nes-container is-rounded is-dark">
+        Score: <span id="score-value">0</span>
+      </div>
+      <div id="wallet-section" class="nes-container is-rounded is-dark">
+        <button
+          id="connect-wallet-btn"
+          class="nes-btn is-primary connect-wallet-btn"
+        >
+          Connect Wallet
+        </button>
+        <button
+          id="disconnect-wallet-btn"
+          style="display: none"
+          class="nes-btn is-warning disconnect-wallet-btn"
+        >
+          Disconnect
+        </button>
+        <div id="account-id"></div>
+        <div id="account-balance"></div>
+      </div>
+
+      <div id="death-dialog" class="nes-container is-rounded is-dark">
+        <form method="dialog">
+          <p class="title">Game Over!</p>
+          <p>You were hit by a bomb.</p>
+          <menu class="dialog-menu">
+            <button class="nes-btn is-primary" id="reset-btn-2">Restart</button>
+            <button
+              id="submit-score-btn"
+              class="nes-btn is-primary"
+              class="nes-btn"
+            >
+              Submit Score
+            </button>
+            <button
+              id="connect-wallet-btn-2"
+              class="nes-btn is-primary connect-wallet-btn"
+            >
+              Connect Wallet
+            </button>
+          </menu>
+        </form>
+      </div>
+
+      <!-- Leaderboard Modal -->
+      <div id="leaderboard-modal" class="nes-container is-rounded is-dark">
+        <button id="close-leaderboard-btn" class="nes-btn">X</button>
+        <h3>Leaderboard</h3>
+        <table class="nes-table is-bordered is-centered is-dark">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Score</th>
+              <th>Difficulty</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-list">
+            <!-- Leaderboard entries will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="mobile-controller" style="display: none">
+        <button id="mobile-left-btn" class="nes-btn">←</button>
+        <button id="mobile-shoot-btn" class="nes-btn is-error">Shoot</button>
+        <button id="mobile-right-btn" class="nes-btn">→</button>
+      </div>
+
+      <div class="overlay">
+        <button id="mobile-menu-button" class="nes-btn" style="display: none">
+          ☰
+        </button>
+      </div>
+
+      <div id="mobile-slide-out">
+        <button id="mobile-menu-button-close" class="nes-btn">Close</button>
+      </div>
+    </div>
+    <script>
+      window.setLoadingIndicator = function (id, status) {
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        const statusText = status === 'loading' ? 'Loading...' : 'Loaded!';
+        loadingIndicator.innerHTML += `<div class="nes-text ${
+          status === 'loading' ? 'is-warning' : 'is-success'
+        }">${id}: ${statusText}</div>`;
+      };
+    </script>
+    <script>
+      // HCS SDK
+      (function (window) {
+        'use strict';
+
+        const HCS = {
+          config: {
+            cdnUrl: 'https://tier.bot/api/hashinals-cdn/',
+            network: 'mainnet',
+            retryAttempts: 3,
+            retryBackoff: 300,
+            debug: false,
+            showLoadingIndicator: false,
+            loadingCallbackName: null,
+          },
+          configMapping: {
+            hcsCdnUrl: 'cdnUrl',
+            hcsNetwork: 'network',
+            hcsRetryAttempts: 'retryAttempts',
+            hcsRetryBackoff: 'retryBackoff',
+            hcsDebug: 'debug',
+            hcsShowLoadingIndicator: 'showLoadingIndicator',
+            hcsLoadingCallbackName: 'loadingCallbackName',
+          },
+          LoadedScripts: {},
+          LoadedWasm: null,
+          LoadedImages: {},
+          scriptLoadedEvent: new Event('HCSScriptLoaded'),
+          loadQueue: [],
+          isProcessingQueue: false,
+
+          log(...args) {
+            if (this.config.debug) {
+              console.log('[HCS SDK]', ...args);
+            }
+          },
+
+          error(...args) {
+            console.error('[HCS SDK]', ...args);
+          },
+
+          loadConfigFromHTML() {
+            const configScript = document.querySelector(
+              'script[data-hcs-config]'
+            );
+            if (configScript) {
+              Object.keys(this.configMapping).forEach((dataAttr) => {
+                if (dataAttr in configScript.dataset) {
+                  const configKey = this.configMapping[dataAttr];
+                  let value = configScript.dataset[dataAttr];
+
+                  // Parse boolean values
+                  if (value === 'true') value = true;
+                  if (value === 'false') value = false;
+
+                  // Parse numeric values
+                  if (!isNaN(value) && value !== '') value = Number(value);
+
+                  this.config[configKey] = value;
+                }
+              });
+            }
+            this.log('Loaded config:', this.config);
+          },
+
+          updateLoadingStatus(id, status) {
+            if (this.config.showLoadingIndicator) {
+              console.log(`[HCS Loading] ${id}: ${status}`);
+            }
+
+            if (
+              this.config.loadingCallbackName &&
+              typeof window[this.config.loadingCallbackName] === 'function'
+            ) {
+              window[this.config.loadingCallbackName](id, status);
+            }
+          },
+
+          async fetchWithRetry(
+            url,
+            retries = this.config.retryAttempts,
+            backoff = this.config.retryBackoff
+          ) {
+            try {
+              const response = await fetch(url);
+              if (!response.ok)
+                throw new Error(`HTTP error! status: ${response.status}`);
+              return response;
+            } catch (error) {
+              if (retries > 0) {
+                this.log(
+                  `Retrying fetch for ${url}. Attempts left: ${retries - 1}`
+                );
+                await new Promise((resolve) => setTimeout(resolve, backoff));
+                return this.fetchWithRetry(url, retries - 1, backoff * 2);
+              }
+              throw error;
+            }
+          },
+
+          async loadScript(scriptElement) {
+            const src = scriptElement.getAttribute('data-src');
+            const scriptId = scriptElement.getAttribute('data-script-id');
+            const topicId = src.split('/').pop();
+            const type = scriptElement.getAttribute('type');
+            const isRequired = scriptElement.hasAttribute('data-required');
+
+            this.updateLoadingStatus(scriptId, 'loading');
+
+            try {
+              const cdnUrl =
+                scriptElement.getAttribute('data-cdn-url') ||
+                this.config.cdnUrl;
+              const network =
+                scriptElement.getAttribute('data-network') ||
+                this.config.network;
+              const response = await this.fetchWithRetry(
+                `${cdnUrl}${topicId}?network=${network}`
+              );
+
+              if (type === 'css') {
+                const content = await response.text();
+                const style = document.createElement('style');
+                style.textContent = content;
+                document.head.appendChild(style);
+              } else if (type === 'wasm') {
+                const arrayBuffer = await response.arrayBuffer();
+                const wasmModule = await WebAssembly.compile(arrayBuffer);
+                this.LoadedWasm = await WebAssembly.instantiate(wasmModule, {
+                  env: {},
+                  ...scriptElement.dataset, // Allow custom imports via data attributes
+                });
+              } else {
+                const content = await response.text();
+                const script = document.createElement('script');
+                script.textContent = content;
+                document.body.appendChild(script);
+              }
+
+              this.LoadedScripts[scriptId] = true;
+              this.updateLoadingStatus(scriptId, 'loaded');
+              window.dispatchEvent(this.scriptLoadedEvent);
+              this.log(`Loaded script: ${scriptId}`);
+            } catch (error) {
+              this.error(
+                `Failed to load ${type || 'script'}: ${scriptId}`,
+                error
+              );
+              this.updateLoadingStatus(scriptId, 'failed');
+              if (isRequired) {
+                throw error; // Re-throw for required scripts
+              }
+            }
+          },
+
+          async loadImage(imageElement) {
+            const src = imageElement.getAttribute('data-src');
+            const topicId = src.split('/').pop();
+
+            this.log(`Loading image: ${topicId}`);
+            this.updateLoadingStatus(`Image: ${topicId}`, 'loading');
+
+            try {
+              const cdnUrl =
+                imageElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
+              const network =
+                imageElement.getAttribute('data-network') ||
+                this.config.network;
+              const response = await this.fetchWithRetry(
+                `${cdnUrl}${topicId}?network=${network}`
+              );
+              const blob = await response.blob();
+              const objectURL = URL.createObjectURL(blob);
+              imageElement.src = objectURL;
+              this.LoadedImages[topicId] = objectURL;
+              this.updateLoadingStatus(`Image: ${topicId}`, 'loaded');
+              this.log(`Loaded image: ${topicId}`);
+            } catch (error) {
+              this.error(`Failed to load image: ${topicId}`, error);
+              this.updateLoadingStatus(`Image: ${topicId}`, 'failed');
+            }
+          },
+
+          async processQueue() {
+            if (this.isProcessingQueue) return;
+            this.isProcessingQueue = true;
+
+            while (this.loadQueue.length > 0) {
+              const item = this.loadQueue.shift();
+              try {
+                if (item.type === 'script') {
+                  await this.loadScript(item.element);
+                } else if (item.type === 'image') {
+                  await this.loadImage(item.element);
+                }
+              } catch (error) {
+                this.error(`Error processing queue item:`, error);
+                // If it's a required script that failed, stop processing
+                if (
+                  item.type === 'script' &&
+                  item.element.hasAttribute('data-required')
+                ) {
+                  break;
+                }
+              }
+            }
+
+            this.isProcessingQueue = false;
+          },
+
+          queueLoading(elements, type) {
+            elements.forEach((element) => {
+              const order =
+                parseInt(element.getAttribute('data-load-order')) || Infinity;
+              this.loadQueue.push({ element, type, order });
+            });
+
+            // Sort the queue based on the load order
+            this.loadQueue.sort((a, b) => a.order - b.order);
+
+            // Start processing the queue
+            this.processQueue();
+          },
+
+          init() {
+            this.loadConfigFromHTML();
+
+            return new Promise((resolve) => {
+              // Find all HCS scripts and images
+              const scriptElements = document.querySelectorAll(
+                'script[data-src^="hcs://"]'
+              );
+              const imageElements = document.querySelectorAll(
+                'img[data-src^="hcs://"]'
+              );
+
+              // Queue scripts and images for loading
+              this.queueLoading(scriptElements, 'script');
+              this.queueLoading(imageElements, 'image');
+
+              // Set up a MutationObserver to watch for new HCS elements
+              const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                  mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                      if (node.matches('script[data-src^="hcs://"]')) {
+                        this.queueLoading([node], 'script');
+                      } else if (node.matches('img[data-src^="hcs://"]')) {
+                        this.queueLoading([node], 'image');
+                      }
+                    }
+                  });
+                });
+              });
+
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+              });
+
+              // Resolve the promise when all resources are loaded
+              const checkLoaded = () => {
+                if (this.loadQueue.length === 0) {
+                  resolve();
+                } else {
+                  requestAnimationFrame(checkLoaded);
+                }
+              };
+              checkLoaded();
+            });
+          },
+        };
+
+        // Auto-initialize HCS
+        window.HCS = HCS.init().then(() => {
+          console.log('All HCS resources loaded');
+          if (typeof window.HCSReady === 'function') {
+            window.HCSReady();
+          }
+        });
+      })(window);
+    </script>
+    <script>
+      const APP_METADATA = {
+        name: 'KiloScribe',
+        description: 'KiloScribe.',
+        url: 'https://kiloscribe.com',
+        icons: ['https://tier.bot/NFTiers.logo.svg'],
+      };
+
+      const PROJECT_ID = 'bfd9ad3ea26e2c73eb21e8f9c750c166';
+      const SUBMIT_TOPIC_ID = '0.0.6661622';
+
+      window.HCSReady = function () {
+        console.log('All resources loaded, initializing game');
+        let gameOver = false;
+        let isLoggedIn = false;
+        const sdk = window?.HederaWalletConnectSDK;
+
+        function saveConnectionInfo(accountId) {
+          if (!accountId) {
+            return localStorage.removeItem('connectedAccountId');
+          }
+          localStorage.setItem('connectedAccountId', accountId);
+        }
+
+        function loadConnectionInfo() {
+          return localStorage.getItem('connectedAccountId');
+        }
+
+        function updateAccountInfo(accountId, balance) {
+          if (!accountId) {
+            isLoggedIn = false;
+            document.getElementById('connect-wallet-btn').style.display =
+              'block';
+            document.getElementById('disconnect-wallet-btn').style.display =
+              'none';
+            document.getElementById('account-id').textContent = ``;
+            document.getElementById('account-balance').textContent = ``;
+            return;
+          }
+          isLoggedIn = true;
+          document.getElementById(
+            'account-id'
+          ).textContent = `Connected: ${accountId}`;
+          document.getElementById(
+            'account-balance'
+          ).textContent = `Balance: ${balance}`;
+          document.getElementById('connect-wallet-btn').style.display = 'none';
+          document.getElementById('connect-wallet-btn-2').style.display =
+            'none';
+          document.getElementById('disconnect-wallet-btn').style.display =
+            'block';
+        }
+
+        async function connectWallet() {
+          try {
+            //document.getElementById('mobile-controller').style.display = 'none';
+            await sdk.init(PROJECT_ID, APP_METADATA);
+            const session = await sdk.connect();
+            console.log('Connected session:', session);
+            const accountId = await sdk.getAccountInfo();
+            const balance = await sdk.getAccountBalance();
+            console.log('account info is', accountId, balance);
+
+            saveConnectionInfo(accountId, balance);
+            updateAccountInfo(accountId, balance);
+            //document.getElementById('mobile-controller').style.display = 'flex';
+          } catch (error) {
+            console.error('Failed to connect wallet:', error);
+            //document.getElementById('mobile-controller').style.display = 'flex';
+          }
+        }
+
+        async function disconnectWallet() {
+          try {
+            try {
+              const session = await sdk.disconnect();
+            } catch (e) {}
+            localStorage.clear();
+
+            saveConnectionInfo(undefined);
+            updateAccountInfo(undefined);
+          } catch (error) {
+            console.error('Failed to connect wallet:', error);
+          }
+        }
+
+        const initAccount = async () => {
+          const savedAccountId = loadConnectionInfo();
+
+          if (savedAccountId) {
+            try {
+              await sdk.init(PROJECT_ID, APP_METADATA);
+              const balance = await sdk.getAccountBalance();
+              updateAccountInfo(savedAccountId, balance);
+            } catch (error) {
+              console.error('Failed to reconnect:', error);
+              localStorage.removeItem('connectedAccountId');
+            }
+          }
+        };
+
+        initAccount();
+
+        document
+          .getElementById('connect-wallet-btn')
+          .addEventListener('click', connectWallet);
+        document
+          .getElementById('connect-wallet-btn-2')
+          .addEventListener('click', connectWallet);
+
+        document
+          .getElementById('disconnect-wallet-btn')
+          .addEventListener('click', disconnectWallet);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({
+          canvas: document.getElementById('game-canvas'),
+          antialias: true,
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000033);
+
+        const balloons = new THREE.Group();
+        const bombs = new THREE.Group();
+        scene.add(balloons);
+        scene.add(bombs);
+
+        let difficulty = 1;
+
+        function resetGame() {
+          document.getElementById('death-dialog').style.display = 'none';
+          gameOver = false;
+          score = 0;
+          scoreElement.textContent = score;
+
+          while (balloons.children.length > 0) {
+            balloons.remove(balloons.children[0]);
+          }
+          while (bombs.children.length > 0) {
+            bombs.remove(bombs.children[0]);
+          }
+
+          for (let i = 0; i < 20; i++) {
+            createBalloon();
+          }
+
+          spawnBombs();
+
+          gun.position.set(0, -7, 0);
+
+          console.log('Game reset');
+        }
+
+        document
+          .getElementById('difficulty-level')
+          .addEventListener('change', (e) => {
+            difficulty = parseInt(e.target.value, 10);
+            console.log('Difficulty changed to:', difficulty);
+            resetGame();
+          });
+
+        function createBalloon() {
+          const geometry = new THREE.SphereGeometry(0.3, 32, 32);
+          const material = new THREE.MeshPhongMaterial({
+            color: Math.random() * 0xffffff,
+          });
+          const balloon = new THREE.Mesh(geometry, material);
+          balloon.position.set(
+            Math.random() * 20 - 10,
+            Math.random() * 10 + 5,
+            0
+          );
+          balloons.add(balloon);
+        }
+
+        function createBomb() {
+          const geometry = new THREE.SphereGeometry(0.2, 32, 32);
+          const material = new THREE.MeshPhongMaterial({
+            color: 0x000000,
+            emissive: 0xff0000,
+            emissiveIntensity: 1,
+          });
+          const bomb = new THREE.Mesh(geometry, material);
+
+          const fuseGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 32);
+          const fuseMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffd700,
+          });
+          const fuse = new THREE.Mesh(fuseGeometry, fuseMaterial);
+          fuse.position.set(0, 0.3, 0);
+          fuse.rotation.x = Math.PI / 2;
+          bomb.add(fuse);
+
+          bomb.position.set(Math.random() * 20 - 10, Math.random() * 10 + 5, 0);
+          bombs.add(bomb);
+        }
+
+        for (let i = 0; i < 20; i++) {
+          createBalloon();
+        }
+
+        function spawnBombs() {
+          bombs.clear();
+          for (let i = 0; i < difficulty * 5; i++) {
+            createBomb();
+          }
+        }
+
+        spawnBombs();
+
+        const gun = new THREE.Group();
+
+        const gunBodyGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+        const gunBodyMaterial = new THREE.MeshPhongMaterial({
+          color: 0xff0000,
+        });
+        const gunBody = new THREE.Mesh(gunBodyGeometry, gunBodyMaterial);
+        gun.add(gunBody);
+
+        const gunBarrelGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1, 32);
+        const gunBarrelMaterial = new THREE.MeshPhongMaterial({
+          color: 0x333333,
+        });
+        const gunBarrel = new THREE.Mesh(gunBarrelGeometry, gunBarrelMaterial);
+        gunBarrel.position.set(0, 0.75, 0);
+        gun.add(gunBarrel);
+
+        gun.position.set(0, -7, 0);
+        scene.add(gun);
+
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(0, 10, 10);
+        scene.add(light);
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        camera.position.z = 15;
+
+        let frame = 0;
+        let score = 0;
+        const scoreElement = document.getElementById('score-value');
+
+        function explodeBalloon(balloon) {
+          const particleCount = 30;
+          const particles = [];
+          const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+          const particleMaterial = new THREE.MeshBasicMaterial({
+            color: balloon.material.color,
+          });
+
+          for (let i = 0; i < particleCount; i++) {
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            particle.position.copy(balloon.position);
+            scene.add(particle);
+            particles.push(particle);
+
+            anime({
+              targets: particle.position,
+              x: particle.position.x + (Math.random() - 0.5) * 2,
+              y: particle.position.y + (Math.random() - 0.5) * 2,
+              z: particle.position.z + (Math.random() - 0.5) * 2,
+              duration: 500,
+              easing: 'easeOutQuad',
+              complete: () => {
+                scene.remove(particle);
+              },
+            });
+          }
+        }
+
+        function explodeBomb(bomb) {
+          const particleCount = 50;
+          const particles = [];
+          const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+          const particleMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+          });
+
+          for (let i = 0; i < particleCount; i++) {
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            particle.position.copy(bomb.position);
+            scene.add(particle);
+            particles.push(particle);
+
+            anime({
+              targets: particle.position,
+              x: particle.position.x + (Math.random() - 0.5) * 2,
+              y: particle.position.y + (Math.random() - 0.5) * 2,
+              z: particle.position.z + (Math.random() - 0.5) * 2,
+              duration: 500,
+              easing: 'easeOutQuad',
+              complete: () => {
+                scene.remove(particle);
+              },
+            });
+          }
+        }
+
+        function shootLaser(e) {
+          console.log('shooting!');
+          if (e) {
+            e.preventDefault();
+          }
+          const laserGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 32);
+          const laserMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+          });
+          const laser = new THREE.Mesh(laserGeometry, laserMaterial);
+          laser.position.set(gun.position.x, gun.position.y + 1.2, 0);
+          scene.add(laser);
+
+          anime({
+            targets: laser.position,
+            y: 15,
+            duration: 1000,
+            easing: 'linear',
+            update: () => {
+              balloons.children.forEach((balloon) => {
+                const laserBox = new THREE.Box3().setFromObject(laser);
+                const balloonBox = new THREE.Box3().setFromObject(balloon);
+                if (laserBox.intersectsBox(balloonBox)) {
+                  explodeBalloon(balloon);
+                  scene.remove(laser);
+                  balloons.remove(balloon);
+                  score += 10;
+                  scoreElement.textContent = score;
+                  createBalloon();
+                }
+              });
+              gun.position.z = 0;
+
+              bombs.children.forEach((bomb) => {
+                bomb.position.z = 0;
+                const laserBox = new THREE.Box3().setFromObject(laser);
+                const gunBox = new THREE.Box3().setFromObject(gun);
+                const bombBox = new THREE.Box3().setFromObject(bomb);
+                if (gunBox.intersectsBox(bombBox)) {
+                  explodeBomb(bomb);
+                  document.getElementById('death-dialog').style.display =
+                    'block';
+                }
+                if (laserBox.intersectsBox(bombBox)) {
+                  explodeBomb(bomb);
+                  scene.remove(laser);
+                  bombs.remove(bomb);
+                  score -= 10;
+                  scoreElement.textContent = score;
+                  createBomb();
+                }
+              });
+            },
+            complete: () => {
+              scene.remove(laser);
+            },
+          });
+        }
+
+        function groupBy(array, key) {
+          return array.reduce((result, currentValue) => {
+            const groupKey = currentValue[key];
+            if (!result[groupKey]) {
+              result[groupKey] = [];
+            }
+            result[groupKey].push(currentValue);
+            return result;
+          }, {});
+        }
+
+        const getAllMessages = async () => {
+          const messages = await sdk.getMessages(
+            SUBMIT_TOPIC_ID,
+            [],
+            undefined,
+            undefined
+          );
+
+          const filteredMessages = messages?.messages
+            ?.filter(
+              (msg) =>
+                Boolean(msg.metadata.difficulty) && Boolean(msg.p === 'hcs-2')
+            )
+            ?.map((a) => {
+              return {
+                ...a,
+                id: a.consensus_timestamp,
+                difficulty: a.metadata.difficulty,
+                score: a.metadata.score,
+              };
+            });
+
+          const groupedMessages = groupBy(filteredMessages, 'payer');
+          const uniqueMessages = Object.values(groupedMessages).map((msgs) => {
+            return msgs.reduce(
+              (maxMsg, msg) => (msg.score > maxMsg.score ? msg : maxMsg),
+              msgs[0]
+            );
+          });
+
+          const sortedMessages = uniqueMessages.sort(
+            (a, b) => b.score - a.score
+          );
+
+          return sortedMessages;
+        };
+
+        const displayLeaderboard = async () => {
+          const leaderboard = await getAllMessages();
+          const leaderboardList = document.getElementById('leaderboard-list');
+          leaderboardList.innerHTML = '';
+          leaderboard.forEach((entry) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${entry.payer}</td><td>${entry.score}</td><td>${entry.difficulty}</td>`;
+            leaderboardList.appendChild(row);
+          });
+          document.getElementById('leaderboard-modal').style.display = 'block';
+        };
+
+        document
+          .getElementById('shoot-btn')
+          .addEventListener('click', shootLaser);
+
+        document
+          .getElementById('view-leaderboard-btn')
+          .addEventListener('click', displayLeaderboard);
+
+        document
+          .getElementById('close-leaderboard-btn')
+          .addEventListener('click', () => {
+            document.getElementById('leaderboard-modal').style.display = 'none';
+          });
+
+        window.addEventListener('keydown', (event) => {
+          const step = 0.5;
+          event.preventDefault();
+          if (event.key === 'ArrowLeft') {
+            gun.position.x -= step;
+          } else if (event.key === 'ArrowRight') {
+            gun.position.x += step;
+          } else if (event.key === ' ') {
+            shootLaser(event);
+          }
+        });
+
+        function animate() {
+          gun.position.z = 0;
+          requestAnimationFrame(animate);
+
+          balloons.children.forEach((balloon) => {
+            balloon.position.y -= 0.02;
+            if (balloon.position.y < -10) {
+              balloon.position.y = Math.random() * 10 + 5;
+              balloon.position.x = Math.random() * 20 - 10;
+            }
+          });
+
+          bombs.children.forEach((bomb, index) => {
+            bomb.position.z = 0;
+            bomb.position.y -= 0.03;
+            if (bomb.position.y < -10) {
+              bomb.position.y = Math.random() * 10 + 5;
+              bomb.position.x = Math.random() * 20 - 10;
+            }
+
+            const gunBox = new THREE.Box3().setFromObject(gun);
+            const bombBox = new THREE.Box3().setFromObject(bomb);
+
+            if (gunBox.intersectsBox(bombBox)) {
+              explodeBomb(bomb);
+              document.getElementById('death-dialog').style.display = 'block';
+              gameOver = true;
+            }
+          });
+
+          if (!gameOver) {
+            renderer.render(scene, camera);
+          }
+        }
+
+        animate();
+
+        document
+          .getElementById('reset-btn')
+          .addEventListener('click', resetGame);
+
+        document
+          .getElementById('reset-btn-2')
+          .addEventListener('click', resetGame);
+
+        document.getElementById('shoot-btn').onclick = function () {
+          console.log('Shoot button clicked');
+          shootLaser();
+        };
+
+        document
+          .getElementById('submit-score-btn')
+          .addEventListener('click', async () => {
+            score = Number(document.getElementById('score-value').textContent);
+            if (!isLoggedIn) {
+              alert(
+                'You need to connect your wallet in order to submit a score.'
+              );
+              return;
+            }
+            await sdk.submitMessageToTopic(
+              SUBMIT_TOPIC_ID,
+              JSON.stringify({
+                t_id: SUBMIT_TOPIC_ID,
+                op: 'register',
+                m: 'Submitting score',
+                metadata: {
+                  score: score,
+                  difficulty: document.getElementById('difficulty-level').value,
+                },
+                p: 'hcs-2',
+              })
+            );
+          });
+
+        window.addEventListener(
+          'resize',
+          function () {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+          },
+          false
+        );
+
+        // Mobile-specific code
+        function isMobile() {
+          return window.innerWidth <= 768;
+        }
+
+        function setupMobileUI() {
+          if (isMobile()) {
+            console.log('setting up mobile...');
+            const mobileController =
+              document.getElementById('mobile-controller');
+            const mobileMenuButton =
+              document.getElementById('mobile-menu-button');
+            const mobileSlideOut = document.getElementById('mobile-slide-out');
+            const gameUI = document.getElementById('game-ui');
+
+            mobileController.style.display = 'flex';
+            mobileMenuButton.style.display = 'block';
+
+            // Move elements to the slide-out menu
+            const elementsToMove = [
+              'controls',
+              'wallet-section',
+              'loading-indicator',
+              'author-section',
+            ];
+            elementsToMove.forEach((id) => {
+              const element = document.getElementById(id);
+              if (element) {
+                mobileSlideOut.appendChild(element);
+              }
+            });
+
+            console.log('setting up controllers..');
+            function addMobileControlListeners() {
+              console.log('Adding mobile control listeners');
+
+              const leftBtn = document.getElementById('mobile-left-btn');
+              const rightBtn = document.getElementById('mobile-right-btn');
+              const shootBtn = document.getElementById('mobile-shoot-btn');
+              const closeButton = document.getElementById('mobile-menu-close');
+
+              const addListener = (element, action) => {
+                if (element) {
+                  element.addEventListener('touchstart', action, {
+                    passive: false,
+                  });
+                  element.addEventListener(
+                    'touchend',
+                    (e) => {
+                      e.preventDefault();
+                    },
+                    { passive: false }
+                  );
+                }
+              };
+
+              addListener(leftBtn, (e) => {
+                e.preventDefault();
+                console.log('Left button pressed');
+                gun.position.x -= 0.5;
+              });
+
+              addListener(rightBtn, (e) => {
+                e.preventDefault();
+                console.log('Right button pressed');
+                gun.position.x += 0.5;
+              });
+
+              addListener(shootBtn, (e) => {
+                e.preventDefault();
+                console.log('Shoot button pressed');
+                shootLaser();
+              });
+              addListener(closeButton, (e) => {
+                e.preventDefault();
+                console.log('Close button pressed');
+                mobileSlideOut.classList.remove('open');
+              });
+            }
+            // Call this function after setting up the mobile UI
+
+            console.log('game controller ready.');
+            // Set up mobile menu
+            mobileMenuButton.addEventListener('click', () => {
+              mobileSlideOut.classList.toggle('open');
+            });
+
+            // Adjust canvas size for mobile
+            const canvas = document.getElementById('game-canvas');
+            canvas.width = window.outerWidth;
+            canvas.height = window.outerHeight;
+            camera.aspect = canvas.width / canvas.height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.width, canvas.height);
+            addMobileControlListeners();
+          }
+        }
+
+        setupMobileUI();
+
+        window.addEventListener('resize', () => {
+          if (isMobile()) {
+            setupMobileUI();
+          } else {
+            // Reset to desktop layout
+            const mobileController =
+              document.getElementById('mobile-controller');
+            const mobileMenuButton =
+              document.getElementById('mobile-menu-button');
+            const mobileSlideOut = document.getElementById('mobile-slide-out');
+
+            mobileController.style.display = 'none';
+            mobileMenuButton.style.display = 'none';
+            mobileSlideOut.classList.remove('open');
+
+            // Move elements back to their original positions
+            const gameUI = document.getElementById('game-ui');
+            const elementsToMove = [
+              'controls',
+              'wallet-section',
+              'author-section',
+            ];
+            elementsToMove.forEach((id) => {
+              const element = document.getElementById(id);
+              gameUI.appendChild(element);
+            });
+
+            // Reset canvas size for desktop
+            const canvas = document.getElementById('game-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            camera.aspect = canvas.width / canvas.height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.width, canvas.height);
+          }
+        });
+
+        console.log('Game setup complete');
+      };
+    </script>
+  </body>
+</html>
