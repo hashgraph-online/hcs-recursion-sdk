@@ -14,13 +14,18 @@ The Recursion SDK is a powerful and flexible tool designed to simplify the integ
 
 ## Usage
 
-Locally, you can simply copy the contents of the file in [the dist directory](./dist/hcs-recursion-sdk.js) into your HTML file.
+Testing locally:
 
-Generally, you want the script included before any logic that depends on the loading of assets.
+- Copy the contents of the file in [the dist directory](./dist/hcs-recursion-sdk.js) into your HTML file.
+- Ensure the script included before any logic that depends on the loading of assets.
 
 ```html
 <script src="path/to/hcs-sdk.js"></script>
 ```
+
+Usage with TierBot CDN:
+- Remove the SDK from your code.
+- The TierBot CDN will automatically inject the latest version of the Recursion SDK into your file. Saving you extra HBAR on inscription fees, and ensuring you have access to all the latest features at the time of inscription.
 
 ## Configuration
 
