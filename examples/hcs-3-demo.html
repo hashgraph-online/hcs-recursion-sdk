@@ -17,11 +17,7 @@
     ></script>
     <script data-src="hcs://1/0.0.6614307" data-script-id="threejs"></script>
     <script data-src="hcs://1/0.0.6627067" data-script-id="animejs"></script>
-    <script
-      data-src="hcs://1/0.0.6633438"
-      data-script-id="nes-css"
-      type="css"
-    ></script>
+    <link data-src="hcs://1/0.0.6633438" data-script-id="nes-css" type="css" />
     <script
       data-src="hcs://1/0.0.6628687"
       data-script-id="rust-wasm"
@@ -195,12 +191,9 @@
       #death-dialog .nes-dialog {
         background-color: #000033;
       }
-
       #mobile-menu-button-close {
         display: none;
       }
-
-      /* Mobile styles */
       @media (max-width: 768px) {
         canvas {
           border: none;
@@ -343,6 +336,14 @@
         <button id="view-leaderboard-btn" class="nes-btn">
           View Leaderboard
         </button>
+        <div>
+          <button id="play-audio-btn" class="nes-btn is-primary">
+            Play Music
+          </button>
+          <button id="pause-audio-btn" class="nes-btn is-warning">
+            Pause Music
+          </button>
+        </div>
       </div>
       <div id="score" class="nes-container is-rounded is-dark">
         Score: <span id="score-value">0</span>
@@ -425,295 +426,20 @@
     <script>
       window.setLoadingIndicator = function (id, status) {
         const loadingIndicator = document.getElementById('loading-indicator');
-
+        const currentText = loadingIndicator.innerHTML;
         const statusText = status === 'loading' ? 'Loading...' : 'Loaded!';
+        if (currentText.includes(`${id}: Loaded!`)) {
+          return;
+        }
         loadingIndicator.innerHTML += `<div class="nes-text ${
           status === 'loading' ? 'is-warning' : 'is-success'
         }">${id}: ${statusText}</div>`;
       };
     </script>
-    <script>
-      // HCS SDK
-      (function (window) {
-        'use strict';
+   <script>
+    !function(t){"function"==typeof define&&define.amd?define(t):t()}((function(){"use strict";const t={config:{cdnUrl:"https://tier.bot/api/hashinals-cdn/",network:"mainnet",retryAttempts:3,retryBackoff:300,debug:!1,showLoadingIndicator:!1,loadingCallbackName:null},configMapping:{hcsCdnUrl:"cdnUrl",hcsNetwork:"network",hcsRetryAttempts:"retryAttempts",hcsRetryBackoff:"retryBackoff",hcsDebug:"debug",hcsShowLoadingIndicator:"showLoadingIndicator",hcsLoadingCallbackName:"loadingCallbackName"},LoadedScripts:{},LoadedWasm:null,LoadedImages:{},LoadedVideos:{},LoadedAudios:{},LoadedGLBs:{},scriptLoadedEvent:new Event("HCSScriptLoaded"),loadQueue:[],isProcessingQueue:!1,log(...t){this.config.debug&&console.log("[HCS SDK]",...t)},error(...t){console.error("[HCS SDK]",...t)},loadConfigFromHTML(){const t=document.querySelector("script[data-hcs-config]");t&&Object.keys(this.configMapping).forEach((e=>{if(t.dataset[e]){const a=this.configMapping[e];let i=t.dataset[e];"true"===i&&(i=!0),"false"===i&&(i=!1),isNaN(Number(i))||""===i||(i=Number(i)),this.config[a]=i}})),this.log("Loaded config:",this.config)},updateLoadingStatus(t,e){"loaded"!==this.LoadedScripts[t]&&(this.config.showLoadingIndicator&&console.log("[HCS Loading]",t,":",e),this.LoadedScripts[t]=e,this.config.loadingCallbackName&&"function"==typeof window[this.config.loadingCallbackName]&&window[this.config.loadingCallbackName](t,e))},async fetchWithRetry(t,e=this.config.retryAttempts,a=this.config.retryBackoff){try{const e=await fetch(t);if(!e.ok)throw new Error("HTTP error! status: "+e.status);return e}catch(i){if(e>0)return this.log("Retrying fetch for "+t+" Attempts left: "+(e-1)),await new Promise((t=>setTimeout(t,a))),this.fetchWithRetry(t,e-1,2*a);throw i}},isDuplicate(t){return!!this.LoadedScripts[t]},async loadScript(t){const e=t.getAttribute("data-src"),a=t.getAttribute("data-script-id"),i=null==e?void 0:e.split("/").pop(),o=t.getAttribute("type"),d=t.hasAttribute("data-required");if(!this.isDuplicate(i)){this.updateLoadingStatus(a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,s=t.getAttribute("data-network")||this.config.network,n=await this.fetchWithRetry(e+i+"?network="+s);if("wasm"===o){const e=await n.arrayBuffer(),i=await WebAssembly.compile(e);this.LoadedWasm=await WebAssembly.instantiate(i,{env:{},...t.dataset}),this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded wasm: "+a)}else{const t=await n.text(),e=document.createElement("script");e.textContent=t,document.body.appendChild(e),e.onload=()=>{this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded script: "+a)},e.onerror=t=>{if(this.error("Failed to load "+o+": "+a,t),this.updateLoadingStatus(a,"failed"),d)throw t}}}catch(s){if(this.error("Failed to load "+o+": "+a,s),this.updateLoadingStatus(a,"failed"),d)throw s}}},async loadStylesheet(t){const e=t.getAttribute("data-src"),a=t.getAttribute("data-script-id"),i=null==e?void 0:e.split("/").pop(),o=t.hasAttribute("data-required");if(!this.isDuplicate(i)){this.updateLoadingStatus(a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,o=t.getAttribute("data-network")||this.config.network,d=await this.fetchWithRetry(e+i+"?network="+o),s=await d.text(),n=document.createElement("style");n.textContent=s,document.head.appendChild(n),this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded and inlined stylesheet: "+a)}catch(d){if(this.error("Failed to load stylesheet: "+a,d),this.updateLoadingStatus(a,"failed"),o)throw d}}},async loadImage(t){const e=t.getAttribute("data-src"),a=null==e?void 0:e.split("/").pop();this.log("Loading image: ",a),this.updateLoadingStatus("Image: "+a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,i=t.getAttribute("data-network")||this.config.network,o=await this.fetchWithRetry(e+a+"?network="+i),d=await o.blob(),s=URL.createObjectURL(d);t.src=s,this.LoadedImages[a]=s,this.updateLoadingStatus("Image: "+a,"loaded"),this.log("Loaded image: ",a)}catch(i){this.error("Failed to load image: ",a,i),this.updateLoadingStatus("Image: "+a,"failed")}},async loadMedia(t,e){const a=t.getAttribute("data-src"),i=null==a?void 0:a.split("/").pop();this.log("Loading "+e+": ",i),this.updateLoadingStatus(e+": "+i,"loading");try{const a=t.getAttribute("data-cdn-url")||this.config.cdnUrl,o=t.getAttribute("data-network")||this.config.network,d=await this.fetchWithRetry(a+i+"?network="+o),s=await d.blob(),n=URL.createObjectURL(s);t.src=n,"video"===e?this.LoadedVideos[i]=n:this.LoadedAudios[i]=n,this.updateLoadingStatus(e+": "+i,"loaded"),this.log("Loaded "+e+": ",i)}catch(o){this.error("Failed to load "+e+": ",i,o),this.updateLoadingStatus(e+": "+i,"failed")}},async loadGLB(t){const e=t.getAttribute("data-src"),a=null==e?void 0:e.split("/").pop();this.log("Loading GLB: ",a),this.updateLoadingStatus("GLB: "+a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,i=t.getAttribute("data-network")||this.config.network,o=await this.fetchWithRetry(e+a+"?network="+i),d=await o.blob(),s=URL.createObjectURL(d);t.src=s,this.LoadedGLBs[a]=s,this.updateLoadingStatus("GLB: "+a,"loaded"),this.log("Loaded GLB: ",a)}catch(i){this.error("Failed to load GLB: ",a,i),this.updateLoadingStatus("GLB: "+a,"failed")}},async processQueue(){if(!this.isProcessingQueue){for(this.isProcessingQueue=!0;this.loadQueue.length>0;){const e=this.loadQueue.shift();try{"script"===e.type?await this.loadScript(e.element):"image"===e.type?await this.loadImage(e.element):"video"===e.type||"audio"===e.type?await this.loadMedia(e.element,e.type):"glb"===e.type?await this.loadGLB(e.element):"css"===e.type&&await this.loadStylesheet(e.element)}catch(t){if(this.error("Error processing queue item:",t),"script"===e.type&&e.element.hasAttribute("data-required"))break}}this.isProcessingQueue=!1}},queueLoading(t,e){t.forEach((t=>{const a=parseInt(t.getAttribute("data-load-order")||"")||1/0;this.loadQueue.push({element:t,type:e,order:a})})),this.loadQueue.sort(((t,e)=>t.order-e.order)),this.processQueue()},init(){return this.loadConfigFromHTML(),new Promise((t=>{const e=()=>{const e=document.querySelectorAll('script[data-src^="hcs://"]'),a=document.querySelectorAll('img[data-src^="hcs://"]'),i=document.querySelectorAll('video[data-src^="hcs://"]'),o=document.querySelectorAll('audio[data-src^="hcs://"]'),d=document.querySelectorAll('model-viewer[data-src^="hcs://"]'),s=document.querySelectorAll('link[data-src^="hcs://"]');this.queueLoading(e,"script"),this.queueLoading(a,"image"),this.queueLoading(i,"video"),this.queueLoading(o,"audio"),this.queueLoading(d,"glb"),this.queueLoading(s,"css");const n=new MutationObserver((t=>{t.forEach((t=>{t.addedNodes.forEach((t=>{if(t.nodeType===Node.ELEMENT_NODE){const e=t;e.matches('script[data-src^="hcs://"]')?this.queueLoading([e],"script"):e.matches('img[data-src^="hcs://"]')?this.queueLoading([e],"image"):e.matches('video[data-src^="hcs://"]')?this.queueLoading([e],"video"):e.matches('audio[data-src^="hcs://"]')?this.queueLoading([e],"audio"):e.matches('model-viewer[data-src^="hcs://"]')?this.queueLoading([e],"glb"):e.matches('link[data-src^="hcs://"]')&&this.queueLoading([e],"css")}}))}))}));document.body?n.observe(document.body,{childList:!0,subtree:!0}):document.addEventListener("DOMContentLoaded",(()=>{n.observe(document.body,{childList:!0,subtree:!0})}));const r=()=>{0===this.loadQueue.length?t():requestAnimationFrame(r)};r()};"loading"===document.readyState?document.addEventListener("DOMContentLoaded",e):e()}))}};window.HCS=t,t.init().then((()=>{console.log("All HCS resources loaded"),"function"==typeof window.HCSReady&&window.HCSReady()}))}));
 
-        const HCS = {
-          config: {
-            cdnUrl: 'https://tier.bot/api/hashinals-cdn/',
-            network: 'mainnet',
-            retryAttempts: 3,
-            retryBackoff: 300,
-            debug: false,
-            showLoadingIndicator: false,
-            loadingCallbackName: null,
-          },
-          configMapping: {
-            hcsCdnUrl: 'cdnUrl',
-            hcsNetwork: 'network',
-            hcsRetryAttempts: 'retryAttempts',
-            hcsRetryBackoff: 'retryBackoff',
-            hcsDebug: 'debug',
-            hcsShowLoadingIndicator: 'showLoadingIndicator',
-            hcsLoadingCallbackName: 'loadingCallbackName',
-          },
-          LoadedScripts: {},
-          LoadedWasm: null,
-          LoadedImages: {},
-          scriptLoadedEvent: new Event('HCSScriptLoaded'),
-          loadQueue: [],
-          isProcessingQueue: false,
-
-          log(...args) {
-            if (this.config.debug) {
-              console.log('[HCS SDK]', ...args);
-            }
-          },
-
-          error(...args) {
-            console.error('[HCS SDK]', ...args);
-          },
-
-          loadConfigFromHTML() {
-            const configScript = document.querySelector(
-              'script[data-hcs-config]'
-            );
-            if (configScript) {
-              Object.keys(this.configMapping).forEach((dataAttr) => {
-                if (dataAttr in configScript.dataset) {
-                  const configKey = this.configMapping[dataAttr];
-                  let value = configScript.dataset[dataAttr];
-
-                  // Parse boolean values
-                  if (value === 'true') value = true;
-                  if (value === 'false') value = false;
-
-                  // Parse numeric values
-                  if (!isNaN(value) && value !== '') value = Number(value);
-
-                  this.config[configKey] = value;
-                }
-              });
-            }
-            this.log('Loaded config:', this.config);
-          },
-
-          updateLoadingStatus(id, status) {
-            if (this.config.showLoadingIndicator) {
-              console.log(`[HCS Loading] ${id}: ${status}`);
-            }
-
-            if (
-              this.config.loadingCallbackName &&
-              typeof window[this.config.loadingCallbackName] === 'function'
-            ) {
-              window[this.config.loadingCallbackName](id, status);
-            }
-          },
-
-          async fetchWithRetry(
-            url,
-            retries = this.config.retryAttempts,
-            backoff = this.config.retryBackoff
-          ) {
-            try {
-              const response = await fetch(url);
-              if (!response.ok)
-                throw new Error(`HTTP error! status: ${response.status}`);
-              return response;
-            } catch (error) {
-              if (retries > 0) {
-                this.log(
-                  `Retrying fetch for ${url}. Attempts left: ${retries - 1}`
-                );
-                await new Promise((resolve) => setTimeout(resolve, backoff));
-                return this.fetchWithRetry(url, retries - 1, backoff * 2);
-              }
-              throw error;
-            }
-          },
-
-          async loadScript(scriptElement) {
-            const src = scriptElement.getAttribute('data-src');
-            const scriptId = scriptElement.getAttribute('data-script-id');
-            const topicId = src.split('/').pop();
-            const type = scriptElement.getAttribute('type');
-            const isRequired = scriptElement.hasAttribute('data-required');
-
-            this.updateLoadingStatus(scriptId, 'loading');
-
-            try {
-              const cdnUrl =
-                scriptElement.getAttribute('data-cdn-url') ||
-                this.config.cdnUrl;
-              const network =
-                scriptElement.getAttribute('data-network') ||
-                this.config.network;
-              const response = await this.fetchWithRetry(
-                `${cdnUrl}${topicId}?network=${network}`
-              );
-
-              if (type === 'css') {
-                const content = await response.text();
-                const style = document.createElement('style');
-                style.textContent = content;
-                document.head.appendChild(style);
-              } else if (type === 'wasm') {
-                const arrayBuffer = await response.arrayBuffer();
-                const wasmModule = await WebAssembly.compile(arrayBuffer);
-                this.LoadedWasm = await WebAssembly.instantiate(wasmModule, {
-                  env: {},
-                  ...scriptElement.dataset, // Allow custom imports via data attributes
-                });
-              } else {
-                const content = await response.text();
-                const script = document.createElement('script');
-                script.textContent = content;
-                document.body.appendChild(script);
-              }
-
-              this.LoadedScripts[scriptId] = true;
-              this.updateLoadingStatus(scriptId, 'loaded');
-              window.dispatchEvent(this.scriptLoadedEvent);
-              this.log(`Loaded script: ${scriptId}`);
-            } catch (error) {
-              this.error(
-                `Failed to load ${type || 'script'}: ${scriptId}`,
-                error
-              );
-              this.updateLoadingStatus(scriptId, 'failed');
-              if (isRequired) {
-                throw error; // Re-throw for required scripts
-              }
-            }
-          },
-
-          async loadImage(imageElement) {
-            const src = imageElement.getAttribute('data-src');
-            const topicId = src.split('/').pop();
-
-            this.log(`Loading image: ${topicId}`);
-            this.updateLoadingStatus(`Image: ${topicId}`, 'loading');
-
-            try {
-              const cdnUrl =
-                imageElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
-              const network =
-                imageElement.getAttribute('data-network') ||
-                this.config.network;
-              const response = await this.fetchWithRetry(
-                `${cdnUrl}${topicId}?network=${network}`
-              );
-              const blob = await response.blob();
-              const objectURL = URL.createObjectURL(blob);
-              imageElement.src = objectURL;
-              this.LoadedImages[topicId] = objectURL;
-              this.updateLoadingStatus(`Image: ${topicId}`, 'loaded');
-              this.log(`Loaded image: ${topicId}`);
-            } catch (error) {
-              this.error(`Failed to load image: ${topicId}`, error);
-              this.updateLoadingStatus(`Image: ${topicId}`, 'failed');
-            }
-          },
-
-          async processQueue() {
-            if (this.isProcessingQueue) return;
-            this.isProcessingQueue = true;
-
-            while (this.loadQueue.length > 0) {
-              const item = this.loadQueue.shift();
-              try {
-                if (item.type === 'script') {
-                  await this.loadScript(item.element);
-                } else if (item.type === 'image') {
-                  await this.loadImage(item.element);
-                }
-              } catch (error) {
-                this.error(`Error processing queue item:`, error);
-                // If it's a required script that failed, stop processing
-                if (
-                  item.type === 'script' &&
-                  item.element.hasAttribute('data-required')
-                ) {
-                  break;
-                }
-              }
-            }
-
-            this.isProcessingQueue = false;
-          },
-
-          queueLoading(elements, type) {
-            elements.forEach((element) => {
-              const order =
-                parseInt(element.getAttribute('data-load-order')) || Infinity;
-              this.loadQueue.push({ element, type, order });
-            });
-
-            // Sort the queue based on the load order
-            this.loadQueue.sort((a, b) => a.order - b.order);
-
-            // Start processing the queue
-            this.processQueue();
-          },
-
-          init() {
-            this.loadConfigFromHTML();
-
-            return new Promise((resolve) => {
-              // Find all HCS scripts and images
-              const scriptElements = document.querySelectorAll(
-                'script[data-src^="hcs://"]'
-              );
-              const imageElements = document.querySelectorAll(
-                'img[data-src^="hcs://"]'
-              );
-
-              // Queue scripts and images for loading
-              this.queueLoading(scriptElements, 'script');
-              this.queueLoading(imageElements, 'image');
-
-              // Set up a MutationObserver to watch for new HCS elements
-              const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                  mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                      if (node.matches('script[data-src^="hcs://"]')) {
-                        this.queueLoading([node], 'script');
-                      } else if (node.matches('img[data-src^="hcs://"]')) {
-                        this.queueLoading([node], 'image');
-                      }
-                    }
-                  });
-                });
-              });
-
-              observer.observe(document.body, {
-                childList: true,
-                subtree: true,
-              });
-
-              // Resolve the promise when all resources are loaded
-              const checkLoaded = () => {
-                if (this.loadQueue.length === 0) {
-                  resolve();
-                } else {
-                  requestAnimationFrame(checkLoaded);
-                }
-              };
-              checkLoaded();
-            });
-          },
-        };
-
-        // Auto-initialize HCS
-        window.HCS = HCS.init().then(() => {
-          console.log('All HCS resources loaded');
-          if (typeof window.HCSReady === 'function') {
-            window.HCSReady();
-          }
-        });
-      })(window);
-    </script>
+   </script>
 
     <script>
       const APP_METADATA = {
@@ -731,6 +457,8 @@
         let gameOver = false;
         let isLoggedIn = false;
         const sdk = window?.HederaWalletConnectSDK;
+        let audioElement;
+        let laserElement;
 
         function saveConnectionInfo(accountId) {
           if (!accountId) {
@@ -770,7 +498,6 @@
 
         async function connectWallet() {
           try {
-            //document.getElementById('mobile-controller').style.display = 'none';
             await sdk.init(PROJECT_ID, APP_METADATA);
             const session = await sdk.connect();
             console.log('Connected session:', session);
@@ -780,10 +507,8 @@
 
             saveConnectionInfo(accountId, balance);
             updateAccountInfo(accountId, balance);
-            //document.getElementById('mobile-controller').style.display = 'flex';
           } catch (error) {
             console.error('Failed to connect wallet:', error);
-            //document.getElementById('mobile-controller').style.display = 'flex';
           }
         }
 
@@ -1017,6 +742,35 @@
                 scene.remove(particle);
               },
             });
+   
+          }
+        }
+
+        async function loadAndPlayAudio(topicId) {
+          // Using a unique ID based on topicId to ensure correct selection
+          let existingAudioElement = document.querySelector(
+            `audio[data-topic-id='${topicId}']`
+          );
+
+          if (existingAudioElement) {
+            existingAudioElement.play();
+          } else {
+            const audioElement = document.createElement('audio');
+            audioElement.setAttribute('data-topic-id', topicId);
+            audioElement.setAttribute('data-src', 'hcs://1/' + topicId);
+
+            await window.HCS.loadMedia(audioElement, 'audio');
+
+            // Append the audio element to the body to make sure it's part of the DOM
+            document.body.appendChild(audioElement);
+
+            audioElement.play();
+          }
+        }
+
+        async function pauseAudio() {
+          if (audioElement) {
+            audioElement.pause();
           }
         }
 
@@ -1032,6 +786,7 @@
           const laser = new THREE.Mesh(laserGeometry, laserMaterial);
           laser.position.set(gun.position.x, gun.position.y + 1.2, 0);
           scene.add(laser);
+          loadAndPlayAudio('0.0.6717862');
 
           anime({
             targets: laser.position,
@@ -1044,6 +799,7 @@
                 const balloonBox = new THREE.Box3().setFromObject(balloon);
                 if (laserBox.intersectsBox(balloonBox)) {
                   explodeBalloon(balloon);
+                  loadAndPlayAudio('0.0.6718586');
                   scene.remove(laser);
                   balloons.remove(balloon);
                   score += 10;
@@ -1065,6 +821,7 @@
                 }
                 if (laserBox.intersectsBox(bombBox)) {
                   explodeBomb(bomb);
+                  loadAndPlayAudio('0.0.6718497');
                   scene.remove(laser);
                   bombs.remove(bomb);
                   score -= 10;
@@ -1189,6 +946,7 @@
             const bombBox = new THREE.Box3().setFromObject(bomb);
 
             if (gunBox.intersectsBox(bombBox)) {
+              loadAndPlayAudio('0.0.6718497');
               explodeBomb(bomb);
               document.getElementById('death-dialog').style.display = 'block';
               gameOver = true;
@@ -1386,6 +1144,22 @@
             renderer.setSize(canvas.width, canvas.height);
           }
         });
+
+        let isBGMusicPlaying = false;
+
+        document.addEventListener('click', (e) => {
+          if (isBGMusicPlaying) {
+            return;
+          }
+          loadAndPlayAudio('0.0.6718124');
+        });
+
+        document
+          .getElementById('play-audio-btn')
+          .addEventListener('click', () => loadAndPlayAudio('0.0.6718124'));
+        document
+          .getElementById('pause-audio-btn')
+          .addEventListener('click', pauseAudio);
 
         console.log('Game setup complete');
       };

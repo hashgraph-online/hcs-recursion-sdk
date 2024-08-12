@@ -30,6 +30,9 @@ export interface HCS {
   LoadedScripts: Record<string, boolean>;
   LoadedWasm: WebAssembly.Instance | null;
   LoadedImages: Record<string, string>;
+  LoadedVideos: Record<string, string>;
+  LoadedAudios: Record<string, string>;
+  LoadedGLBs: Record<string, string>;
   scriptLoadedEvent: Event;
   loadQueue: LoadQueueItem[];
   isProcessingQueue: boolean;
@@ -43,8 +46,12 @@ export interface HCS {
     retries?: number,
     backoff?: number
   ): Promise<Response>;
+  isDuplicate(topicId: string): boolean;
   loadScript(scriptElement: HTMLElement): Promise<void>;
+  loadStylesheet(linkElement: HTMLElement): Promise<void>;
   loadImage(imageElement: HTMLElement): Promise<void>;
+  loadMedia(videoElement: HTMLElement, mediaType: string): Promise<void>;
+  loadGLB(glbElement: HTMLElement): Promise<void>;
   processQueue(): Promise<void>;
   queueLoading(elements: NodeListOf<HTMLElement>, type: string): void;
   init(): Promise<void>;
@@ -52,7 +59,7 @@ export interface HCS {
 
 declare global {
   interface Window {
-    HCS: Promise<void>;
+    HCS: HCS;
     HCSReady?: () => void;
   }
 }
