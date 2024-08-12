@@ -59,7 +59,7 @@ const HCS: HCS = {
 
   updateLoadingStatus(id: string, status: string) {
     if (this.config.showLoadingIndicator) {
-      console.log(`[HCS Loading] ${id}: ${status}`);
+      console.log('[HCS Loading]', id, ':', status);
     }
 
     if (
@@ -78,12 +78,13 @@ const HCS: HCS = {
   ) {
     try {
       const response = await fetch(url);
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error('HTTP error! status: ' + response.status);
+      }
       return response;
     } catch (error) {
       if (retries > 0) {
-        this.log(`Retrying fetch for ${url}. Attempts left: ${retries - 1}`);
+        this.log('Retrying fetch for' + url + 'Attempts left:' + retries - 1);
         await new Promise((resolve) => setTimeout(resolve, backoff));
         return this.fetchWithRetry(url, retries - 1, backoff * 2);
       }
@@ -106,7 +107,7 @@ const HCS: HCS = {
       const network =
         scriptElement.getAttribute('data-network') || this.config.network;
       const response = await this.fetchWithRetry(
-        `${cdnUrl}${topicId}?network=${network}`
+        cdnUrl + topicId + '?network=' + network
       );
 
       if (type === 'css') {
@@ -131,9 +132,9 @@ const HCS: HCS = {
       this.LoadedScripts[scriptId!] = true;
       this.updateLoadingStatus(scriptId!, 'loaded');
       window.dispatchEvent(this.scriptLoadedEvent);
-      this.log(`Loaded script: ${scriptId}`);
+      this.log('Loaded script:' + scriptId);
     } catch (error) {
-      this.error(`Failed to load ${type || 'script'}: ${scriptId}`, error);
+      this.error('Failed to load ' + type + ': ' + scriptId, error);
       this.updateLoadingStatus(scriptId!, 'failed');
       if (isRequired) {
         throw error;
@@ -145,8 +146,8 @@ const HCS: HCS = {
     const src = imageElement.getAttribute('data-src');
     const topicId = src!.split('/').pop()!;
 
-    this.log(`Loading image: ${topicId}`);
-    this.updateLoadingStatus(`Image: ${topicId}`, 'loading');
+    this.log('Loading image: ', topicId);
+    this.updateLoadingStatus('Image: ' + topicId, 'loading');
 
     try {
       const cdnUrl =
@@ -154,17 +155,17 @@ const HCS: HCS = {
       const network =
         imageElement.getAttribute('data-network') || this.config.network;
       const response = await this.fetchWithRetry(
-        `${cdnUrl}${topicId}?network=${network}`
+        cdnUrl + topicId + '?network=' + network
       );
       const blob = await response.blob();
       const objectURL = URL.createObjectURL(blob);
       (imageElement as HTMLImageElement).src = objectURL;
       this.LoadedImages[topicId] = objectURL;
-      this.updateLoadingStatus(`Image: ${topicId}`, 'loaded');
-      this.log(`Loaded image: ${topicId}`);
+      this.updateLoadingStatus('Image: ' + topicId, 'loaded');
+      this.log('Loaded image: ', topicId);
     } catch (error) {
-      this.error(`Failed to load image: ${topicId}`, error);
-      this.updateLoadingStatus(`Image: ${topicId}`, 'failed');
+      this.error('Failed to load image: ', topicId, error);
+      this.updateLoadingStatus('Image: ' + topicId, 'failed');
     }
   },
 
@@ -181,7 +182,7 @@ const HCS: HCS = {
           await this.loadImage(item!.element);
         }
       } catch (error) {
-        this.error(`Error processing queue item:`, error);
+        this.error('Error processing queue item:', error);
         if (
           item!.type === 'script' &&
           item!.element.hasAttribute('data-required')
@@ -212,45 +213,64 @@ const HCS: HCS = {
     this.loadConfigFromHTML();
 
     return new Promise<void>((resolve) => {
-      const scriptElements = document.querySelectorAll(
-        'script[data-src^="hcs://"]'
-      );
-      const imageElements = document.querySelectorAll(
-        'img[data-src^="hcs://"]'
-      );
+      const initializeObserver = () => {
+        const scriptElements = document.querySelectorAll(
+          'script[data-src^="hcs://"]'
+        );
+        const imageElements = document.querySelectorAll(
+          'img[data-src^="hcs://"]'
+        );
 
-      this.queueLoading(scriptElements, 'script');
-      this.queueLoading(imageElements, 'image');
+        this.queueLoading(scriptElements, 'script');
+        this.queueLoading(imageElements, 'image');
 
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              if ((node as HTMLElement).matches('script[data-src^="hcs://"]')) {
-                this.queueLoading([node as HTMLElement], 'script');
-              } else if (
-                (node as HTMLElement).matches('img[data-src^="hcs://"]')
-              ) {
-                this.queueLoading([node as HTMLElement], 'image');
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                if (
+                  (node as HTMLElement).matches('script[data-src^="hcs://"]')
+                ) {
+                  this.queueLoading([node as HTMLElement], 'script');
+                } else if (
+                  (node as HTMLElement).matches('img[data-src^="hcs://"]')
+                ) {
+                  this.queueLoading([node as HTMLElement], 'image');
+                }
               }
-            }
+            });
           });
         });
-      });
 
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
-
-      const checkLoaded = () => {
-        if (this.loadQueue.length === 0) {
-          resolve();
+        if (document.body) {
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+          });
         } else {
-          requestAnimationFrame(checkLoaded);
+          document.addEventListener('DOMContentLoaded', () => {
+            observer.observe(document.body, {
+              childList: true,
+              subtree: true,
+            });
+          });
         }
+
+        const checkLoaded = () => {
+          if (this.loadQueue.length === 0) {
+            resolve();
+          } else {
+            requestAnimationFrame(checkLoaded);
+          }
+        };
+        checkLoaded();
       };
-      checkLoaded();
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeObserver);
+      } else {
+        initializeObserver();
+      }
     });
   },
 };

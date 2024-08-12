@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite';
 import path from 'path';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig({
-  plugins: [nodePolyfills()],
+  plugins: [],
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
@@ -23,13 +22,5 @@ export default defineConfig({
   define: {
     'process.env': {},
     global: 'globalThis',
-  },
-  resolve: {
-    alias: {
-      process: 'process/browser',
-      stream: 'stream-browserify',
-      zlib: 'browserify-zlib',
-      util: 'util',
-    },
   },
 });
