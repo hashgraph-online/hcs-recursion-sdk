@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HCS Recursion - Hedera Wallet Connect Game</title>
+    <title>HCS Recursion - Hashinal Blaster</title>
 
     <script
       data-hcs-config
@@ -15,24 +15,40 @@
       data-hcs-show-loading-indicator="true"
       data-hcs-loading-callback-name="setLoadingIndicator"
     ></script>
-    <script data-src="hcs://1/0.0.6614307" data-script-id="threejs"></script>
-    <script data-src="hcs://1/0.0.6627067" data-script-id="animejs"></script>
-    <link data-src="hcs://1/0.0.6633438" data-script-id="nes-css" type="css" />
+    <link
+      data-src="hcs://1/0.0.6633438"
+      data-load-order="1"
+      data-required="true"
+      data-script-id="nes-css"
+      type="css"
+    />
+    <script
+      data-src="hcs://1/0.0.6614307"
+      data-load-order="2"
+      data-script-id="threejs"
+    ></script>
+    <script
+      data-src="hcs://1/0.0.6627067"
+      data-load-order="3"
+      data-script-id="animejs"
+    ></script>
     <script
       data-src="hcs://1/0.0.6628687"
       data-script-id="rust-wasm"
       type="wasm"
+      data-load-order="5"
     ></script>
     <script
       data-src="hcs://1/0.0.6662611"
       data-script-id="wallet-connect"
+      data-load-order="4"
     ></script>
     <style>
       body {
         margin: 0;
         overflow: hidden;
         background-color: #000033;
-        font-family: 'Press Start 2P', cursive;
+        font-family: 'Verdana', Verdana, sans-serif !important;
         color: #fff;
       }
       canvas {
@@ -110,7 +126,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 24px;
-        color: #00ff00;
+        color: #57d175;
       }
       #difficulty-level {
         z-index: 40;
@@ -141,7 +157,7 @@
         padding: 20px;
         border-radius: 10px;
         display: none;
-        z-index: 10;
+        z-index: 5000;
         pointer-events: auto;
       }
       #leaderboard-modal h3 {
@@ -160,7 +176,7 @@
       }
       #leaderboard-modal table th {
         background-color: #1a1a1a;
-        color: #00ff00;
+        color: #57d175;
       }
       #close-leaderboard-btn {
         position: absolute;
@@ -193,6 +209,19 @@
       }
       #mobile-menu-button-close {
         display: none;
+      }
+      #start-screen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+        pointer-events: auto;
+        text-align: center;
+      }
+      #start-btn {
+        font-size: 24px;
+        padding: 10px 20px;
       }
       @media (max-width: 768px) {
         canvas {
@@ -304,7 +333,7 @@
     <canvas id="game-canvas"></canvas>
     <div id="game-ui">
       <div id="overlay" class="nes-container is-rounded is-dark">
-        HCS Recursion: Laser Balloon Popper
+        HCS Recursion: Hashinal Blaster
       </div>
       <div
         id="loading-indicator"
@@ -389,7 +418,6 @@
         </form>
       </div>
 
-      <!-- Leaderboard Modal -->
       <div id="leaderboard-modal" class="nes-container is-rounded is-dark">
         <button id="close-leaderboard-btn" class="nes-btn">X</button>
         <h3>Leaderboard</h3>
@@ -401,9 +429,7 @@
               <th>Difficulty</th>
             </tr>
           </thead>
-          <tbody id="leaderboard-list">
-            <!-- Leaderboard entries will be inserted here -->
-          </tbody>
+          <tbody id="leaderboard-list"></tbody>
         </table>
       </div>
 
@@ -423,6 +449,15 @@
         <button id="mobile-menu-button-close" class="nes-btn">Close</button>
       </div>
     </div>
+
+    <div id="start-screen" class="nes-container is-rounded is-dark">
+      <h1>Welcome to Hashinal Blaster</h1>
+      <button id="start-btn" class="nes-btn is-primary">Start Game</button>
+    </div>
+    <script>
+      !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).HCSRecusionSDK={})}(this,(function(t){"use strict";const e=t=>new Promise((e=>setTimeout(e,t))),a={config:{cdnUrl:"https://tier.bot/api/hashinals-cdn/",network:"mainnet",retryAttempts:3,retryBackoff:300,debug:!1,showLoadingIndicator:!1,loadingCallbackName:null},configMapping:{hcsCdnUrl:"cdnUrl",hcsNetwork:"network",hcsRetryAttempts:"retryAttempts",hcsRetryBackoff:"retryBackoff",hcsDebug:"debug",hcsShowLoadingIndicator:"showLoadingIndicator",hcsLoadingCallbackName:"loadingCallbackName"},LoadedScripts:{},LoadedWasm:null,LoadedImages:{},LoadedVideos:{},LoadedAudios:{},LoadedAudioUrls:{},LoadedGLBs:{},scriptLoadedEvent:new Event("HCSScriptLoaded"),loadQueue:[],isProcessingQueue:!1,log(...t){this.config.debug&&console.log("[HCS SDK]",...t)},error(...t){console.error("[HCS SDK]",...t)},loadConfigFromHTML(){const t=document.querySelector("script[data-hcs-config]");t&&Object.keys(this.configMapping).forEach((e=>{if(t.dataset[e]){const a=this.configMapping[e];let o=t.dataset[e];"true"===o&&(o=!0),"false"===o&&(o=!1),isNaN(Number(o))||""===o||(o=Number(o)),this.config[a]=o}})),this.log("Loaded config:",this.config)},updateLoadingStatus(t,e){"loaded"!==this.LoadedScripts[t]&&(this.config.showLoadingIndicator&&console.log("[HCS Loading]",t,":",e),this.LoadedScripts[t]=e,this.config.loadingCallbackName&&"function"==typeof window[this.config.loadingCallbackName]&&window[this.config.loadingCallbackName](t,e))},async fetchWithRetry(t,a=this.config.retryAttempts,o=this.config.retryBackoff){try{const e=await fetch(t);if(!e.ok)throw new Error("HTTP error! status: "+e.status);return e}catch(i){if(a>0)return this.log("Retrying fetch for "+t+" Attempts left: "+(a-1)),await e(o),this.fetchWithRetry(t,a-1,2*o);throw i}},isDuplicate(t){return!!this.LoadedScripts[t]},async loadScript(t){const e=t.getAttribute("data-src"),a=t.getAttribute("data-script-id"),o=null==e?void 0:e.split("/").pop(),i=t.getAttribute("type"),d=t.hasAttribute("data-required");if(!this.isDuplicate(o)){this.updateLoadingStatus(a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,s=t.getAttribute("data-network")||this.config.network,n=await this.fetchWithRetry(e+o+"?network="+s);if("wasm"===i){const e=await n.arrayBuffer(),o=await WebAssembly.compile(e);this.LoadedWasm=await WebAssembly.instantiate(o,{env:{},...t.dataset}),this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded wasm: "+a)}else{const t=await n.text(),e=document.createElement("script");e.textContent=t,document.body.appendChild(e),e.onload=()=>{this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded script: "+a)},e.onerror=t=>{if(this.error("Failed to load "+i+": "+a,t),this.updateLoadingStatus(a,"failed"),d)throw t}}}catch(s){if(this.error("Failed to load "+i+": "+a,s),this.updateLoadingStatus(a,"failed"),d)throw s}}},async loadStylesheet(t){const e=t.getAttribute("data-src"),a=t.getAttribute("data-script-id"),o=null==e?void 0:e.split("/").pop(),i=t.hasAttribute("data-required");if(!this.isDuplicate(o)){this.updateLoadingStatus(a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,i=t.getAttribute("data-network")||this.config.network,d=await this.fetchWithRetry(e+o+"?network="+i),s=await d.text(),n=document.createElement("style");n.textContent=s,document.head.appendChild(n),this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded and inlined stylesheet: "+a)}catch(d){if(this.error("Failed to load stylesheet: "+a,d),this.updateLoadingStatus(a,"failed"),i)throw d}}},async loadImage(t){const e=t.getAttribute("data-src"),a=null==e?void 0:e.split("/").pop();this.log("Loading image: ",a),this.updateLoadingStatus("Image: "+a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,o=t.getAttribute("data-network")||this.config.network,i=await this.fetchWithRetry(e+a+"?network="+o),d=await i.blob(),s=URL.createObjectURL(d);t.src=s,this.LoadedImages[a]=s,this.updateLoadingStatus("Image: "+a,"loaded"),this.log("Loaded image: ",a)}catch(o){this.error("Failed to load image: ",a,o),this.updateLoadingStatus("Image: "+a,"failed")}},async loadMedia(t,e){const a=t.getAttribute("data-src"),o=null==a?void 0:a.split("/").pop();this.log("Loading "+e+": ",o),this.updateLoadingStatus(e+": "+o,"loading");try{const a=t.getAttribute("data-cdn-url")||this.config.cdnUrl,i=t.getAttribute("data-network")||this.config.network,d=await this.fetchWithRetry(a+o+"?network="+i),s=await d.blob(),n=URL.createObjectURL(s);t.src=n,"video"===e?this.LoadedVideos[o]=n:this.LoadedAudios[o]=n,this.updateLoadingStatus(e+": "+o,"loaded"),this.log("Loaded "+e+": ",o)}catch(i){this.error("Failed to load "+e+": ",o,i),this.updateLoadingStatus(e+": "+o,"failed")}},async loadGLB(t){const e=t.getAttribute("data-src"),a=null==e?void 0:e.split("/").pop();this.log("Loading GLB: ",a),this.updateLoadingStatus("GLB: "+a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,o=t.getAttribute("data-network")||this.config.network,i=await this.fetchWithRetry(e+a+"?network="+o),d=await i.blob(),s=URL.createObjectURL(d);t.src=s,this.LoadedGLBs[a]=s,this.updateLoadingStatus("GLB: "+a,"loaded"),this.log("Loaded GLB: ",a)}catch(o){this.error("Failed to load GLB: ",a,o),this.updateLoadingStatus("GLB: "+a,"failed")}},async processQueue(){if(!this.isProcessingQueue){for(this.isProcessingQueue=!0;this.loadQueue.length>0;){const e=this.loadQueue.shift();try{"script"===e.type?await this.loadScript(e.element):"image"===e.type?await this.loadImage(e.element):"video"===e.type||"audio"===e.type?await this.loadMedia(e.element,e.type):"glb"===e.type?await this.loadGLB(e.element):"css"===e.type&&await this.loadStylesheet(e.element)}catch(t){if(this.error("Error processing queue item:",t),"script"===e.type&&e.element.hasAttribute("data-required"))break}}this.isProcessingQueue=!1}},queueLoading(t,e){t.forEach((t=>{const a=parseInt(t.getAttribute("data-load-order")||"")||1/0;this.loadQueue.push({element:t,type:e,order:a})})),this.loadQueue.sort(((t,e)=>t.order-e.order)),this.processQueue()},init(){return this.loadConfigFromHTML(),new Promise((t=>{const e=()=>{const e=document.querySelectorAll('script[data-src^="hcs://"]'),a=document.querySelectorAll('img[data-src^="hcs://"]'),o=document.querySelectorAll('video[data-src^="hcs://"]'),i=document.querySelectorAll('audio[data-src^="hcs://"]'),d=document.querySelectorAll('model-viewer[data-src^="hcs://"]'),s=document.querySelectorAll('link[data-src^="hcs://"]');this.queueLoading(e,"script"),this.queueLoading(a,"image"),this.queueLoading(o,"video"),this.queueLoading(i,"audio"),this.queueLoading(d,"glb"),this.queueLoading(s,"css");const n=new MutationObserver((t=>{t.forEach((t=>{t.addedNodes.forEach((t=>{if(t.nodeType===Node.ELEMENT_NODE){const e=t;e.matches('script[data-src^="hcs://"]')?this.queueLoading([e],"script"):e.matches('img[data-src^="hcs://"]')?this.queueLoading([e],"image"):e.matches('video[data-src^="hcs://"]')?this.queueLoading([e],"video"):e.matches('audio[data-src^="hcs://"]')?this.queueLoading([e],"audio"):e.matches('model-viewer[data-src^="hcs://"]')?this.queueLoading([e],"glb"):e.matches('link[data-src^="hcs://"]')&&this.queueLoading([e],"css")}}))}))}));document.body?n.observe(document.body,{childList:!0,subtree:!0}):document.addEventListener("DOMContentLoaded",(()=>{n.observe(document.body,{childList:!0,subtree:!0})}));const r=()=>{0===this.loadQueue.length?t():requestAnimationFrame(r)};r()};"loading"===document.readyState?document.addEventListener("DOMContentLoaded",e):e()}))},async preloadAudio(t){const e=document.createElement("audio");e.setAttribute("data-topic-id",t),e.setAttribute("data-src",`hcs://1/${t}`),document.body.appendChild(e),await window.HCS.loadMedia(e,"audio");const a=document.querySelector(`audio[data-topic-id='${t}']`);a?window.HCS.LoadedAudioUrls[t]=a.src:console.error("Failed to preload audio:",t)},async playAudio(t,e=1){var a,o;const i=null==(o=null==(a=null==window?void 0:window.HCS)?void 0:a.LoadedAudioUrls)?void 0:o[t];if(i){const a=new Audio(i);a.volume=e,window.HCS.LoadedAudios[t]=a,a.play().catch((t=>{console.error("Failed to play audio:",t)})),a.addEventListener("ended",(()=>{a.remove(),delete window.HCS.LoadedAudios[t]}))}else console.error("Audio not preloaded:",t)},async pauseAudio(t){var e,a,o,i,d,s;let n=document.querySelector(`audio[data-topic-id='${t}']`);n?(console.log("found element",n),n.pause(),null==(o=null==(a=null==(e=null==window?void 0:window.HCS)?void 0:e.LoadedAudios)?void 0:a[t])||o.pause()):(console.log(window),null==(s=null==(d=null==(i=null==window?void 0:window.HCS)?void 0:i.LoadedAudios)?void 0:d[t])||s.pause())},async loadAndPlayAudio(t,e=!1,a=1){let o=document.querySelector(`audio[data-topic-id='${t}']`);if(o)o.volume=a,await o.play();else{const i=document.createElement("audio");i.volume=a,e&&i.setAttribute("autoplay","autoplay"),i.setAttribute("data-topic-id",t),i.setAttribute("data-src","hcs://1/"+t),document.body.appendChild(i),await this.loadMedia(i,"audio"),o=document.querySelector(`audio[data-topic-id='${t}']`),e||await o.play()}}};window.HCS=a,a.init().then((()=>{console.log("All HCS resources loaded"),"function"==typeof window.HCSReady&&window.HCSReady()})),t.sleep=e,Object.defineProperty(t,Symbol.toStringTag,{value:"Module"})}));
+    </script>
+
     <script>
       window.setLoadingIndicator = function (id, status) {
         const loadingIndicator = document.getElementById('loading-indicator');
@@ -435,13 +470,7 @@
           status === 'loading' ? 'is-warning' : 'is-success'
         }">${id}: ${statusText}</div>`;
       };
-    </script>
-   <script>
-    !function(t){"function"==typeof define&&define.amd?define(t):t()}((function(){"use strict";const t={config:{cdnUrl:"https://tier.bot/api/hashinals-cdn/",network:"mainnet",retryAttempts:3,retryBackoff:300,debug:!1,showLoadingIndicator:!1,loadingCallbackName:null},configMapping:{hcsCdnUrl:"cdnUrl",hcsNetwork:"network",hcsRetryAttempts:"retryAttempts",hcsRetryBackoff:"retryBackoff",hcsDebug:"debug",hcsShowLoadingIndicator:"showLoadingIndicator",hcsLoadingCallbackName:"loadingCallbackName"},LoadedScripts:{},LoadedWasm:null,LoadedImages:{},LoadedVideos:{},LoadedAudios:{},LoadedGLBs:{},scriptLoadedEvent:new Event("HCSScriptLoaded"),loadQueue:[],isProcessingQueue:!1,log(...t){this.config.debug&&console.log("[HCS SDK]",...t)},error(...t){console.error("[HCS SDK]",...t)},loadConfigFromHTML(){const t=document.querySelector("script[data-hcs-config]");t&&Object.keys(this.configMapping).forEach((e=>{if(t.dataset[e]){const a=this.configMapping[e];let i=t.dataset[e];"true"===i&&(i=!0),"false"===i&&(i=!1),isNaN(Number(i))||""===i||(i=Number(i)),this.config[a]=i}})),this.log("Loaded config:",this.config)},updateLoadingStatus(t,e){"loaded"!==this.LoadedScripts[t]&&(this.config.showLoadingIndicator&&console.log("[HCS Loading]",t,":",e),this.LoadedScripts[t]=e,this.config.loadingCallbackName&&"function"==typeof window[this.config.loadingCallbackName]&&window[this.config.loadingCallbackName](t,e))},async fetchWithRetry(t,e=this.config.retryAttempts,a=this.config.retryBackoff){try{const e=await fetch(t);if(!e.ok)throw new Error("HTTP error! status: "+e.status);return e}catch(i){if(e>0)return this.log("Retrying fetch for "+t+" Attempts left: "+(e-1)),await new Promise((t=>setTimeout(t,a))),this.fetchWithRetry(t,e-1,2*a);throw i}},isDuplicate(t){return!!this.LoadedScripts[t]},async loadScript(t){const e=t.getAttribute("data-src"),a=t.getAttribute("data-script-id"),i=null==e?void 0:e.split("/").pop(),o=t.getAttribute("type"),d=t.hasAttribute("data-required");if(!this.isDuplicate(i)){this.updateLoadingStatus(a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,s=t.getAttribute("data-network")||this.config.network,n=await this.fetchWithRetry(e+i+"?network="+s);if("wasm"===o){const e=await n.arrayBuffer(),i=await WebAssembly.compile(e);this.LoadedWasm=await WebAssembly.instantiate(i,{env:{},...t.dataset}),this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded wasm: "+a)}else{const t=await n.text(),e=document.createElement("script");e.textContent=t,document.body.appendChild(e),e.onload=()=>{this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded script: "+a)},e.onerror=t=>{if(this.error("Failed to load "+o+": "+a,t),this.updateLoadingStatus(a,"failed"),d)throw t}}}catch(s){if(this.error("Failed to load "+o+": "+a,s),this.updateLoadingStatus(a,"failed"),d)throw s}}},async loadStylesheet(t){const e=t.getAttribute("data-src"),a=t.getAttribute("data-script-id"),i=null==e?void 0:e.split("/").pop(),o=t.hasAttribute("data-required");if(!this.isDuplicate(i)){this.updateLoadingStatus(a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,o=t.getAttribute("data-network")||this.config.network,d=await this.fetchWithRetry(e+i+"?network="+o),s=await d.text(),n=document.createElement("style");n.textContent=s,document.head.appendChild(n),this.updateLoadingStatus(a,"loaded"),window.dispatchEvent(this.scriptLoadedEvent),this.log("Loaded and inlined stylesheet: "+a)}catch(d){if(this.error("Failed to load stylesheet: "+a,d),this.updateLoadingStatus(a,"failed"),o)throw d}}},async loadImage(t){const e=t.getAttribute("data-src"),a=null==e?void 0:e.split("/").pop();this.log("Loading image: ",a),this.updateLoadingStatus("Image: "+a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,i=t.getAttribute("data-network")||this.config.network,o=await this.fetchWithRetry(e+a+"?network="+i),d=await o.blob(),s=URL.createObjectURL(d);t.src=s,this.LoadedImages[a]=s,this.updateLoadingStatus("Image: "+a,"loaded"),this.log("Loaded image: ",a)}catch(i){this.error("Failed to load image: ",a,i),this.updateLoadingStatus("Image: "+a,"failed")}},async loadMedia(t,e){const a=t.getAttribute("data-src"),i=null==a?void 0:a.split("/").pop();this.log("Loading "+e+": ",i),this.updateLoadingStatus(e+": "+i,"loading");try{const a=t.getAttribute("data-cdn-url")||this.config.cdnUrl,o=t.getAttribute("data-network")||this.config.network,d=await this.fetchWithRetry(a+i+"?network="+o),s=await d.blob(),n=URL.createObjectURL(s);t.src=n,"video"===e?this.LoadedVideos[i]=n:this.LoadedAudios[i]=n,this.updateLoadingStatus(e+": "+i,"loaded"),this.log("Loaded "+e+": ",i)}catch(o){this.error("Failed to load "+e+": ",i,o),this.updateLoadingStatus(e+": "+i,"failed")}},async loadGLB(t){const e=t.getAttribute("data-src"),a=null==e?void 0:e.split("/").pop();this.log("Loading GLB: ",a),this.updateLoadingStatus("GLB: "+a,"loading");try{const e=t.getAttribute("data-cdn-url")||this.config.cdnUrl,i=t.getAttribute("data-network")||this.config.network,o=await this.fetchWithRetry(e+a+"?network="+i),d=await o.blob(),s=URL.createObjectURL(d);t.src=s,this.LoadedGLBs[a]=s,this.updateLoadingStatus("GLB: "+a,"loaded"),this.log("Loaded GLB: ",a)}catch(i){this.error("Failed to load GLB: ",a,i),this.updateLoadingStatus("GLB: "+a,"failed")}},async processQueue(){if(!this.isProcessingQueue){for(this.isProcessingQueue=!0;this.loadQueue.length>0;){const e=this.loadQueue.shift();try{"script"===e.type?await this.loadScript(e.element):"image"===e.type?await this.loadImage(e.element):"video"===e.type||"audio"===e.type?await this.loadMedia(e.element,e.type):"glb"===e.type?await this.loadGLB(e.element):"css"===e.type&&await this.loadStylesheet(e.element)}catch(t){if(this.error("Error processing queue item:",t),"script"===e.type&&e.element.hasAttribute("data-required"))break}}this.isProcessingQueue=!1}},queueLoading(t,e){t.forEach((t=>{const a=parseInt(t.getAttribute("data-load-order")||"")||1/0;this.loadQueue.push({element:t,type:e,order:a})})),this.loadQueue.sort(((t,e)=>t.order-e.order)),this.processQueue()},init(){return this.loadConfigFromHTML(),new Promise((t=>{const e=()=>{const e=document.querySelectorAll('script[data-src^="hcs://"]'),a=document.querySelectorAll('img[data-src^="hcs://"]'),i=document.querySelectorAll('video[data-src^="hcs://"]'),o=document.querySelectorAll('audio[data-src^="hcs://"]'),d=document.querySelectorAll('model-viewer[data-src^="hcs://"]'),s=document.querySelectorAll('link[data-src^="hcs://"]');this.queueLoading(e,"script"),this.queueLoading(a,"image"),this.queueLoading(i,"video"),this.queueLoading(o,"audio"),this.queueLoading(d,"glb"),this.queueLoading(s,"css");const n=new MutationObserver((t=>{t.forEach((t=>{t.addedNodes.forEach((t=>{if(t.nodeType===Node.ELEMENT_NODE){const e=t;e.matches('script[data-src^="hcs://"]')?this.queueLoading([e],"script"):e.matches('img[data-src^="hcs://"]')?this.queueLoading([e],"image"):e.matches('video[data-src^="hcs://"]')?this.queueLoading([e],"video"):e.matches('audio[data-src^="hcs://"]')?this.queueLoading([e],"audio"):e.matches('model-viewer[data-src^="hcs://"]')?this.queueLoading([e],"glb"):e.matches('link[data-src^="hcs://"]')&&this.queueLoading([e],"css")}}))}))}));document.body?n.observe(document.body,{childList:!0,subtree:!0}):document.addEventListener("DOMContentLoaded",(()=>{n.observe(document.body,{childList:!0,subtree:!0})}));const r=()=>{0===this.loadQueue.length?t():requestAnimationFrame(r)};r()};"loading"===document.readyState?document.addEventListener("DOMContentLoaded",e):e()}))}};window.HCS=t,t.init().then((()=>{console.log("All HCS resources loaded"),"function"==typeof window.HCSReady&&window.HCSReady()}))}));
 
-   </script>
-
-    <script>
       const APP_METADATA = {
         name: 'KiloScribe',
         description: 'KiloScribe.',
@@ -452,13 +481,15 @@
       const PROJECT_ID = 'bfd9ad3ea26e2c73eb21e8f9c750c166';
       const SUBMIT_TOPIC_ID = '0.0.6661622';
 
-      window.HCSReady = function () {
+      window.HCSReady = async function () {
         console.log('All resources loaded, initializing game');
         let gameOver = false;
         let isLoggedIn = false;
         const sdk = window?.HederaWalletConnectSDK;
-        let audioElement;
-        let laserElement;
+        await window.HCS.preloadAudio('0.0.6735077'); // background music
+        await window.HCS.preloadAudio('0.0.6718586'); // Balloon pop
+        await window.HCS.preloadAudio('0.0.6718497'); // Bomb explosion
+        await window.HCS.preloadAudio('0.0.6717862'); // Laser shoot
 
         function saveConnectionInfo(accountId) {
           if (!accountId) {
@@ -570,8 +601,10 @@
 
         const balloons = new THREE.Group();
         const bombs = new THREE.Group();
+        const hashinals = new THREE.Group();
         scene.add(balloons);
         scene.add(bombs);
+        scene.add(hashinals);
 
         let difficulty = 1;
 
@@ -587,12 +620,16 @@
           while (bombs.children.length > 0) {
             bombs.remove(bombs.children[0]);
           }
+          while (hashinals.children.length > 0) {
+            hashinals.remove(hashinals.children[0]);
+          }
 
           for (let i = 0; i < 20; i++) {
             createBalloon();
           }
 
           spawnBombs();
+          fetchHashinalData();
 
           gun.position.set(0, -7, 0);
 
@@ -608,9 +645,23 @@
           });
 
         function createBalloon() {
+          const greenShades = [
+            '#8fe6a4',
+            '#57d175',
+            '#30b752',
+            '#25a244',
+            '#1e7734',
+            '#1d5e2e',
+            '#1a4d28',
+            '#092a13',
+          ];
+
+          const randomColor =
+            greenShades[Math.floor(Math.random() * greenShades.length)];
+
           const geometry = new THREE.SphereGeometry(0.3, 32, 32);
           const material = new THREE.MeshPhongMaterial({
-            color: Math.random() * 0xffffff,
+            color: randomColor,
           });
           const balloon = new THREE.Mesh(geometry, material);
           balloon.position.set(
@@ -622,23 +673,109 @@
         }
 
         function createBomb() {
-          const geometry = new THREE.SphereGeometry(0.2, 32, 32);
-          const material = new THREE.MeshPhongMaterial({
-            color: 0x000000,
-            emissive: 0xff0000,
-            emissiveIntensity: 1,
+          // Create the bomb body
+          const bombGeometry = new THREE.SphereGeometry(0.4, 32, 32); // Increased radius to 0.4 (2x original size)
+          const bombMaterial = new THREE.MeshPhongMaterial({
+            color: 0xff0000, // Red color for the bomb
+            emissive: 0x660000, // Darker red emissive color for added depth
+            emissiveIntensity: 0.5,
+            shininess: 100,
+            specular: 0x990000, // Specular highlight in red
           });
-          const bomb = new THREE.Mesh(geometry, material);
+          const bomb = new THREE.Mesh(bombGeometry, bombMaterial);
 
-          const fuseGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 32);
+          // Create the fuse
+          const fuseGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.0, 32); // Doubled size for the fuse
           const fuseMaterial = new THREE.MeshPhongMaterial({
             color: 0xffd700,
+            shininess: 100,
+            specular: 0xffff00,
           });
           const fuse = new THREE.Mesh(fuseGeometry, fuseMaterial);
-          fuse.position.set(0, 0.3, 0);
+          fuse.position.set(0, 0.6, 0); // Adjusted position to match the larger bomb
           fuse.rotation.x = Math.PI / 2;
           bomb.add(fuse);
 
+          // Create the cap of the bomb (a small hemisphere on top)
+          const capGeometry = new THREE.SphereGeometry(
+            0.2,
+            32,
+            32,
+            0,
+            Math.PI * 2,
+            0,
+            Math.PI / 2
+          ); // Doubled size for the cap
+          const capMaterial = new THREE.MeshPhongMaterial({
+            color: 0x990000, // Darker red for the cap
+            shininess: 50,
+            specular: 0xcc0000,
+          });
+          const cap = new THREE.Mesh(capGeometry, capMaterial);
+          cap.position.set(0, 0.4, 0); // Adjusted position to match the larger bomb
+          bomb.add(cap);
+
+          // Create the wick (a twisted rope)
+          const wickGeometry = new THREE.TorusGeometry(
+            0.04,
+            0.02,
+            16,
+            100,
+            Math.PI * 2
+          ); // Doubled size for the wick
+          const wickMaterial = new THREE.MeshPhongMaterial({
+            color: 0x8b4513, // Brownish color for the wick
+          });
+          const wick = new THREE.Mesh(wickGeometry, wickMaterial);
+          wick.position.set(0, 0.8, 0); // Adjusted position to match the larger bomb
+          wick.rotation.x = Math.PI / 2;
+          bomb.add(wick);
+
+          // Create a particle system for the sparking effect
+          const sparkGeometry = new THREE.BufferGeometry();
+          const sparkMaterial = new THREE.PointsMaterial({
+            color: 0xffa500, // Orange color for the sparks
+            size: 0.05,
+            transparent: true,
+            opacity: 0.8,
+          });
+
+          // Set up the particle positions (initially at the tip of the fuse)
+          const sparkPositions = new Float32Array(100 * 3); // 100 particles, 3 coordinates each (x, y, z)
+          for (let i = 0; i < sparkPositions.length; i += 3) {
+            sparkPositions[i] = 0; // x
+            sparkPositions[i + 1] = 0.9; // y (just above the fuse)
+            sparkPositions[i + 2] = 0; // z
+          }
+          sparkGeometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(sparkPositions, 3)
+          );
+
+          const sparks = new THREE.Points(sparkGeometry, sparkMaterial);
+          bomb.add(sparks);
+
+          // Animate the sparks to simulate sparking
+          const animateSparks = () => {
+            const positions = sparks.geometry.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+              positions[i] += (Math.random() - 0.5) * 0.1; // Random x movement
+              positions[i + 1] += Math.random() * 0.1; // Upward y movement
+              positions[i + 2] += (Math.random() - 0.5) * 0.1; // Random z movement
+
+              // Reset the spark to the tip of the fuse if it moves too far
+              if (positions[i + 1] > 1.5) {
+                positions[i] = 0;
+                positions[i + 1] = 0.9;
+                positions[i + 2] = 0;
+              }
+            }
+            sparks.geometry.attributes.position.needsUpdate = true;
+            requestAnimationFrame(animateSparks);
+          };
+          animateSparks();
+
+          // Set the position of the bomb
           bomb.position.set(Math.random() * 20 - 10, Math.random() * 10 + 5, 0);
           bombs.add(bomb);
         }
@@ -655,6 +792,58 @@
         }
 
         spawnBombs();
+
+        async function fetchHashinalData() {
+          const loader = document.getElementById('loading-indicator');
+          loader.style.display = 'block'; // Show loader
+
+          try {
+            const url =
+              'https://tier.bot/api/inscriptions/numbers?random=true&limit=20';
+
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            const allHashinals = data?.slice(0, 20);
+
+            const positions = allHashinals.map(() => [
+              (Math.random() - 0.5) * 20,
+              (Math.random() - 0.5) * 10 + 5,
+              0,
+            ]);
+
+            allHashinals.forEach((hashinal, index) => {
+              const card = createHashinalCard(hashinal, positions[index]);
+              hashinals.add(card);
+            });
+          } catch (error) {
+            console.error('Error fetching Hashinal data:', error);
+          } finally {
+            loader.style.display = 'none'; // Hide loader
+          }
+        }
+
+        function createHashinalCard(data, position) {
+          const group = new THREE.Group();
+          group.position.set(...position);
+          group.userData = data;
+
+          const cardGeometry = new THREE.PlaneGeometry(1, 1);
+          const texture = new THREE.TextureLoader().load(
+            `https://tier.bot/api/hashinals-cdn/${data.image}?network=mainnet`
+          );
+          const cardMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide,
+          });
+          const card = new THREE.Mesh(cardGeometry, cardMaterial);
+          group.add(card);
+
+          return group;
+        }
 
         const gun = new THREE.Group();
 
@@ -685,7 +874,6 @@
 
         camera.position.z = 15;
 
-        let frame = 0;
         let score = 0;
         const scoreElement = document.getElementById('score-value');
 
@@ -697,6 +885,7 @@
             color: balloon.material.color,
           });
 
+          window.HCS.playAudio('0.0.6718586');
           for (let i = 0; i < particleCount; i++) {
             const particle = new THREE.Mesh(particleGeometry, particleMaterial);
             particle.position.copy(balloon.position);
@@ -725,6 +914,7 @@
             color: 0xff0000,
           });
 
+          window.HCS.playAudio('0.0.6718497', 0.5);
           for (let i = 0; i < particleCount; i++) {
             const particle = new THREE.Mesh(particleGeometry, particleMaterial);
             particle.position.copy(bomb.position);
@@ -742,35 +932,34 @@
                 scene.remove(particle);
               },
             });
-   
           }
         }
 
-        async function loadAndPlayAudio(topicId) {
-          // Using a unique ID based on topicId to ensure correct selection
-          let existingAudioElement = document.querySelector(
-            `audio[data-topic-id='${topicId}']`
-          );
+        function explodeHashinal(hashinal) {
+          const particleCount = 50;
+          const particles = [];
+          const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+          const particleMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+          });
 
-          if (existingAudioElement) {
-            existingAudioElement.play();
-          } else {
-            const audioElement = document.createElement('audio');
-            audioElement.setAttribute('data-topic-id', topicId);
-            audioElement.setAttribute('data-src', 'hcs://1/' + topicId);
+          for (let i = 0; i < particleCount; i++) {
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            particle.position.copy(hashinal.position);
+            scene.add(particle);
+            particles.push(particle);
 
-            await window.HCS.loadMedia(audioElement, 'audio');
-
-            // Append the audio element to the body to make sure it's part of the DOM
-            document.body.appendChild(audioElement);
-
-            audioElement.play();
-          }
-        }
-
-        async function pauseAudio() {
-          if (audioElement) {
-            audioElement.pause();
+            anime({
+              targets: particle.position,
+              x: particle.position.x + (Math.random() - 0.5) * 2,
+              y: particle.position.y + (Math.random() - 0.5) * 2,
+              z: particle.position.z + (Math.random() - 0.5) * 2,
+              duration: 500,
+              easing: 'easeOutQuad',
+              complete: () => {
+                scene.remove(particle);
+              },
+            });
           }
         }
 
@@ -786,7 +975,7 @@
           const laser = new THREE.Mesh(laserGeometry, laserMaterial);
           laser.position.set(gun.position.x, gun.position.y + 1.2, 0);
           scene.add(laser);
-          loadAndPlayAudio('0.0.6717862');
+          window.HCS.playAudio('0.0.6717862');
 
           anime({
             targets: laser.position,
@@ -799,7 +988,6 @@
                 const balloonBox = new THREE.Box3().setFromObject(balloon);
                 if (laserBox.intersectsBox(balloonBox)) {
                   explodeBalloon(balloon);
-                  loadAndPlayAudio('0.0.6718586');
                   scene.remove(laser);
                   balloons.remove(balloon);
                   score += 10;
@@ -821,12 +1009,24 @@
                 }
                 if (laserBox.intersectsBox(bombBox)) {
                   explodeBomb(bomb);
-                  loadAndPlayAudio('0.0.6718497');
                   scene.remove(laser);
                   bombs.remove(bomb);
-                  score -= 10;
+                  let reduction = difficulty === '1' ? 50 : 100;
+                  score -= reduction;
                   scoreElement.textContent = score;
                   createBomb();
+                }
+              });
+
+              hashinals.children.forEach((hashinal) => {
+                const laserBox = new THREE.Box3().setFromObject(laser);
+                const hashinalBox = new THREE.Box3().setFromObject(hashinal);
+                if (laserBox.intersectsBox(hashinalBox)) {
+                  explodeHashinal(hashinal);
+                  scene.remove(laser);
+                  hashinals.remove(hashinal);
+                  score += 20; // Double points for hitting a Hashinal
+                  scoreElement.textContent = score;
                 }
               });
             },
@@ -834,6 +1034,68 @@
               scene.remove(laser);
             },
           });
+        }
+
+        async function animate() {
+          gun.position.z = 0;
+          requestAnimationFrame(animate);
+
+          balloons.children.forEach((balloon) => {
+            const getDifficulty = () => {
+              console.log('difficulty is', difficulty);
+              if (difficulty === 1) {
+                return 0.02;
+              } else if (difficulty === 2) {
+                return 0.03;
+              } else {
+                return 0.08;
+              }
+            };
+            balloon.position.y -= getDifficulty();
+            if (balloon.position.y < -10) {
+              balloon.position.y = Math.random() * 10 + 5;
+              balloon.position.x = Math.random() * 20 - 10;
+            }
+          });
+
+          bombs.children.forEach((bomb) => {
+            bomb.position.z = 0;
+            bomb.position.y -= 0.03;
+            if (bomb.position.y < -10) {
+              bomb.position.y = Math.random() * 10 + 5;
+              bomb.position.x = Math.random() * 20 - 10;
+            }
+
+            const gunBox = new THREE.Box3().setFromObject(gun);
+            const bombBox = new THREE.Box3().setFromObject(bomb);
+
+            if (gunBox.intersectsBox(bombBox)) {
+              explodeBomb(bomb);
+              document.getElementById('death-dialog').style.display = 'block';
+              gameOver = true;
+            }
+          });
+
+          hashinals.children.forEach((hashinal) => {
+            const getDifficulty = () => {
+              if (difficulty === 1) {
+                return 0.05;
+              } else if (difficulty === 2) {
+                return 0.075;
+              } else {
+                return 0.1;
+              }
+            };
+            hashinal.position.y -= getDifficulty();
+            if (hashinal.position.y < -10) {
+              hashinal.position.y = Math.random() * 10 + 5;
+              hashinal.position.x = Math.random() * 20 - 10;
+            }
+          });
+
+          if (!gameOver) {
+            renderer.render(scene, camera);
+          }
         }
 
         function groupBy(array, key) {
@@ -885,6 +1147,7 @@
         };
 
         const displayLeaderboard = async () => {
+          console.log('opening leaderboard...');
           const leaderboard = await getAllMessages();
           const leaderboardList = document.getElementById('leaderboard-list');
           leaderboardList.innerHTML = '';
@@ -921,44 +1184,6 @@
             shootLaser(event);
           }
         });
-
-        function animate() {
-          gun.position.z = 0;
-          requestAnimationFrame(animate);
-
-          balloons.children.forEach((balloon) => {
-            balloon.position.y -= 0.02;
-            if (balloon.position.y < -10) {
-              balloon.position.y = Math.random() * 10 + 5;
-              balloon.position.x = Math.random() * 20 - 10;
-            }
-          });
-
-          bombs.children.forEach((bomb, index) => {
-            bomb.position.z = 0;
-            bomb.position.y -= 0.03;
-            if (bomb.position.y < -10) {
-              bomb.position.y = Math.random() * 10 + 5;
-              bomb.position.x = Math.random() * 20 - 10;
-            }
-
-            const gunBox = new THREE.Box3().setFromObject(gun);
-            const bombBox = new THREE.Box3().setFromObject(bomb);
-
-            if (gunBox.intersectsBox(bombBox)) {
-              loadAndPlayAudio('0.0.6718497');
-              explodeBomb(bomb);
-              document.getElementById('death-dialog').style.display = 'block';
-              gameOver = true;
-            }
-          });
-
-          if (!gameOver) {
-            renderer.render(scene, camera);
-          }
-        }
-
-        animate();
 
         document
           .getElementById('reset-btn')
@@ -1007,12 +1232,9 @@
           },
           false
         );
-
-        // Mobile-specific code
         function isMobile() {
           return window.innerWidth <= 768;
         }
-
         function setupMobileUI() {
           if (isMobile()) {
             console.log('setting up mobile...');
@@ -1026,7 +1248,6 @@
             mobileController.style.display = 'flex';
             mobileMenuButton.style.display = 'block';
 
-            // Move elements to the slide-out menu
             const elementsToMove = [
               'controls',
               'wallet-section',
@@ -1087,15 +1308,10 @@
                 mobileSlideOut.classList.remove('open');
               });
             }
-            // Call this function after setting up the mobile UI
-
-            console.log('game controller ready.');
-            // Set up mobile menu
             mobileMenuButton.addEventListener('click', () => {
               mobileSlideOut.classList.toggle('open');
             });
 
-            // Adjust canvas size for mobile
             const canvas = document.getElementById('game-canvas');
             canvas.width = window.outerWidth;
             canvas.height = window.outerHeight;
@@ -1112,7 +1328,6 @@
           if (isMobile()) {
             setupMobileUI();
           } else {
-            // Reset to desktop layout
             const mobileController =
               document.getElementById('mobile-controller');
             const mobileMenuButton =
@@ -1123,7 +1338,6 @@
             mobileMenuButton.style.display = 'none';
             mobileSlideOut.classList.remove('open');
 
-            // Move elements back to their original positions
             const gameUI = document.getElementById('game-ui');
             const elementsToMove = [
               'controls',
@@ -1135,7 +1349,6 @@
               gameUI.appendChild(element);
             });
 
-            // Reset canvas size for desktop
             const canvas = document.getElementById('game-canvas');
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -1145,21 +1358,44 @@
           }
         });
 
-        let isBGMusicPlaying = false;
-
-        document.addEventListener('click', (e) => {
-          if (isBGMusicPlaying) {
-            return;
-          }
-          loadAndPlayAudio('0.0.6718124');
-        });
-
         document
           .getElementById('play-audio-btn')
-          .addEventListener('click', () => loadAndPlayAudio('0.0.6718124'));
+          .addEventListener('click', () => window.HCS.playAudio('0.0.6735077'));
         document
           .getElementById('pause-audio-btn')
-          .addEventListener('click', pauseAudio);
+          .addEventListener('click', () => {
+            console.log('pausing audio');
+            window.HCS.pauseAudio('0.0.6735077');
+          });
+
+        let isFetchingHashinals = false;
+        const getHashinals = async () => {
+          setInterval(async () => {
+            if (!isFetchingHashinals) {
+              return;
+            }
+            isFetchingHashinals = true;
+            await fetchHashinalData();
+            isFetchingHashinals = false;
+          }, 5000);
+        };
+
+        getHashinals();
+        document
+          .getElementById('start-btn')
+          .addEventListener('click', async () => {
+            document.getElementById('start-screen').style.display = 'none';
+            await fetchHashinalData();
+            animate();
+            let isPlayingBg = true;
+            await window.HCS.playAudio('0.0.6735077');
+            setInterval(async () => {
+              if (!isPlayingBg) {
+                await window.HCS.playAudio('0.0.6735077');
+                isPlayingBg = false;
+              }
+            }, 30000);
+          });
 
         console.log('Game setup complete');
       };

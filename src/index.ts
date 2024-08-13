@@ -1,5 +1,9 @@
 import { HCS, LoadQueueItem, HCSConfigMapping } from './types';
 
+export const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 const HCS: HCS = {
   config: {
     cdnUrl: 'https://tier.bot/api/hashinals-cdn/',
@@ -24,6 +28,7 @@ const HCS: HCS = {
   LoadedImages: {},
   LoadedVideos: {},
   LoadedAudios: {},
+  LoadedAudioUrls: {},
   LoadedGLBs: {},
   scriptLoadedEvent: new Event('HCSScriptLoaded'),
   loadQueue: [] as LoadQueueItem[],
@@ -66,7 +71,7 @@ const HCS: HCS = {
       return;
     }
     if (this.config.showLoadingIndicator) {
-      console.log('[HCS Loading]', id, ':', status);
+      console.log('[HCS Loading] ' + id + ' : ' + status);
     }
     this.LoadedScripts[id] = status;
     if (
@@ -93,17 +98,14 @@ const HCS: HCS = {
         this.log(
           'Retrying fetch for ' + url + ' Attempts left: ' + (retries - 1)
         );
-        await new Promise((resolve) => setTimeout(resolve, backoff));
+        await sleep(backoff);
         return this.fetchWithRetry(url, retries - 1, backoff * 2);
       }
       throw error;
     }
   },
-  isDuplicate(topicId) {
-    if (this.LoadedScripts[topicId]) {
-      return true;
-    }
-    return false;
+  isDuplicate(topicId: string): boolean {
+    return !!this.LoadedScripts[topicId];
   },
 
   async loadScript(scriptElement: HTMLElement): Promise<void> {
@@ -113,7 +115,7 @@ const HCS: HCS = {
     const type = scriptElement.getAttribute('type');
     const isRequired = scriptElement.hasAttribute('data-required');
 
-    if (this.isDuplicate(topicId)) {
+    if (this.isDuplicate(topicId || '')) {
       return;
     }
 
@@ -170,7 +172,7 @@ const HCS: HCS = {
     const stylesheetId = linkElement.getAttribute('data-script-id');
     const topicId = src?.split('/').pop();
     const isRequired = linkElement.hasAttribute('data-required');
-    if (this.isDuplicate(topicId)) {
+    if (this.isDuplicate(topicId || '')) {
       return;
     }
 
@@ -206,7 +208,7 @@ const HCS: HCS = {
     const src = imageElement.getAttribute('data-src');
     const topicId = src?.split('/').pop();
 
-    this.log('Loading image: ', topicId);
+    this.log('Loading image: ' + topicId);
     this.updateLoadingStatus('Image: ' + topicId, 'loading');
 
     try {
@@ -222,9 +224,9 @@ const HCS: HCS = {
       (imageElement as HTMLImageElement).src = objectURL;
       this.LoadedImages[topicId!] = objectURL;
       this.updateLoadingStatus('Image: ' + topicId, 'loaded');
-      this.log('Loaded image: ', topicId);
+      this.log('Loaded image: ' + topicId);
     } catch (error) {
-      this.error('Failed to load image: ', topicId, error);
+      this.error('Failed to load image: ' + topicId, error);
       this.updateLoadingStatus('Image: ' + topicId, 'failed');
     }
   },
@@ -236,7 +238,7 @@ const HCS: HCS = {
     const src = mediaElement.getAttribute('data-src');
     const topicId = src?.split('/').pop();
 
-    this.log('Loading ' + mediaType + ': ', topicId);
+    this.log('Loading ' + mediaType + ': ' + topicId);
     this.updateLoadingStatus(mediaType + ': ' + topicId, 'loading');
 
     try {
@@ -258,9 +260,9 @@ const HCS: HCS = {
       }
 
       this.updateLoadingStatus(mediaType + ': ' + topicId, 'loaded');
-      this.log('Loaded ' + mediaType + ': ', topicId);
+      this.log('Loaded ' + mediaType + ': ' + topicId);
     } catch (error) {
-      this.error('Failed to load ' + mediaType + ': ', topicId, error);
+      this.error('Failed to load ' + mediaType + ': ' + topicId, error);
       this.updateLoadingStatus(mediaType + ': ' + topicId, 'failed');
     }
   },
@@ -269,7 +271,7 @@ const HCS: HCS = {
     const src = glbElement.getAttribute('data-src');
     const topicId = src?.split('/').pop();
 
-    this.log('Loading GLB: ', topicId);
+    this.log('Loading GLB: ' + topicId);
     this.updateLoadingStatus('GLB: ' + topicId, 'loading');
 
     try {
@@ -286,9 +288,9 @@ const HCS: HCS = {
       this.LoadedGLBs[topicId!] = objectURL;
 
       this.updateLoadingStatus('GLB: ' + topicId, 'loaded');
-      this.log('Loaded GLB: ', topicId);
+      this.log('Loaded GLB: ' + topicId);
     } catch (error) {
-      this.error('Failed to load GLB: ', topicId, error);
+      this.error('Failed to load GLB: ' + topicId, error);
       this.updateLoadingStatus('GLB: ' + topicId, 'failed');
     }
   },
@@ -423,6 +425,88 @@ const HCS: HCS = {
         initializeObserver();
       }
     });
+  },
+  async preloadAudio(topicId: string) {
+    const audioElement = document.createElement('audio');
+    audioElement.setAttribute('data-topic-id', topicId);
+    audioElement.setAttribute('data-src', 'hcs://1/' + topicId);
+    document.body.appendChild(audioElement);
+
+    await window.HCS.loadMedia(audioElement, 'audio');
+
+    const cachedAudio = document.querySelector(
+      'audio[data-topic-id="' + topicId + '"]'
+    ) as HTMLAudioElement;
+
+    if (cachedAudio) {
+      window.HCS.LoadedAudioUrls[topicId] = cachedAudio.src;
+    } else {
+      console.error('Failed to preload audio: ' + topicId);
+    }
+  },
+  async playAudio(topicId: string, volume = 1.0) {
+    const audioUrl = window?.HCS?.LoadedAudioUrls?.[topicId];
+
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.volume = volume;
+      window.HCS.LoadedAudios[topicId] = audio;
+
+      audio.play().catch((error) => {
+        console.error('Failed to play audio:', error);
+      });
+
+      audio.addEventListener('ended', () => {
+        audio.remove();
+        delete window.HCS.LoadedAudios[topicId];
+      });
+    } else {
+      console.error('Audio not preloaded: ' + topicId);
+    }
+  },
+
+  async pauseAudio(topicId: string) {
+    const audioElement = document.querySelector(
+      'audio[data-topic-id="' + topicId + '"]'
+    ) as HTMLAudioElement;
+
+    if (audioElement) {
+      console.log('found element', audioElement);
+      audioElement.pause();
+      window?.HCS?.LoadedAudios?.[topicId]?.pause();
+    } else {
+      window?.HCS?.LoadedAudios?.[topicId]?.pause();
+    }
+  },
+
+  async loadAndPlayAudio(topicId: string, autoplay = false, volume = 1.0) {
+    let existingAudioElement = document.querySelector(
+      'audio[data-topic-id="' + topicId + '"]'
+    ) as HTMLAudioElement;
+
+    if (existingAudioElement) {
+      existingAudioElement.volume = volume;
+      await existingAudioElement.play();
+    } else {
+      const audioElement = document.createElement('audio');
+      audioElement.volume = volume;
+      if (autoplay) {
+        audioElement.setAttribute('autoplay', 'autoplay');
+      }
+      audioElement.setAttribute('data-topic-id', topicId);
+      audioElement.setAttribute('data-src', 'hcs://1/' + topicId);
+
+      document.body.appendChild(audioElement);
+
+      await this.loadMedia(audioElement, 'audio');
+
+      existingAudioElement = document.querySelector(
+        'audio[data-topic-id="' + topicId + '"]'
+      );
+      if (!autoplay) {
+        await existingAudioElement.play();
+      }
+    }
   },
 };
 

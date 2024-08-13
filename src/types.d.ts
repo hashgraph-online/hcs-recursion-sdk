@@ -31,7 +31,8 @@ export interface HCS {
   LoadedWasm: WebAssembly.Instance | null;
   LoadedImages: Record<string, string>;
   LoadedVideos: Record<string, string>;
-  LoadedAudios: Record<string, string>;
+  LoadedAudios: Record<string, HTMLAudioElement>;
+  LoadedAudioUrls: Record<string, string>;
   LoadedGLBs: Record<string, string>;
   scriptLoadedEvent: Event;
   loadQueue: LoadQueueItem[];
@@ -54,6 +55,10 @@ export interface HCS {
   loadGLB(glbElement: HTMLElement): Promise<void>;
   processQueue(): Promise<void>;
   queueLoading(elements: NodeListOf<HTMLElement>, type: string): void;
+  loadAndPlayAudio(topicId: string, autoplay?: boolean, volume?: number): void;
+  playAudio(topicId: string, volume?: number): void;
+  preloadAudio(topicId: string): void;
+  pauseAudio(topicId: string): void;
   init(): Promise<void>;
 }
 
