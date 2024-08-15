@@ -145,11 +145,11 @@ const HCS: HCS = {
         const script = document.createElement('script');
         script.textContent = content;
         document.body.appendChild(script);
-        script.onload = () => {
-          this.updateLoadingStatus(scriptId!, 'loaded');
-          window.dispatchEvent(this.scriptLoadedEvent);
-          this.log('Loaded script: ' + scriptId);
-        };
+
+        this.updateLoadingStatus(scriptId!, 'loaded');
+        window.dispatchEvent(this.scriptLoadedEvent);
+        this.log('Loaded script: ' + scriptId);
+
         script.onerror = (error) => {
           this.error('Failed to load ' + type + ': ' + scriptId, error);
           this.updateLoadingStatus(scriptId!, 'failed');
@@ -513,8 +513,9 @@ const HCS: HCS = {
 window.HCS = HCS;
 
 HCS.init().then(() => {
-  console.log('All HCS resources loaded');
+  console.log('All HCS resources loaded', window.HCSReady);
   if (typeof window.HCSReady === 'function') {
+    console.log('running start..');
     window.HCSReady();
   }
 });
