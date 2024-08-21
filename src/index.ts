@@ -24,7 +24,7 @@ const HCS: HCS = {
     hcsLoadingCallbackName: 'loadingCallbackName',
   },
   LoadedScripts: {},
-  LoadedWasm: null,
+  LoadedWasm: {},
   LoadedImages: {},
   LoadedVideos: {},
   LoadedAudios: {},
@@ -104,6 +104,7 @@ const HCS: HCS = {
       throw error;
     }
   },
+
   isDuplicate(topicId: string): boolean {
     return !!this.LoadedScripts[topicId];
   },
@@ -133,13 +134,14 @@ const HCS: HCS = {
       if (type === 'wasm') {
         const arrayBuffer = await response.arrayBuffer();
         const wasmModule = await WebAssembly.compile(arrayBuffer);
-        this.LoadedWasm = await WebAssembly.instantiate(wasmModule, {
+        this.LoadedWasm[scriptId!] = await WebAssembly.instantiate(wasmModule, {
           env: {},
           ...(scriptElement.dataset as any),
         });
         this.updateLoadingStatus(scriptId!, 'loaded');
         window.dispatchEvent(this.scriptLoadedEvent);
         this.log('Loaded wasm: ' + scriptId);
+        return this.LoadedWasm[scriptId!];
       } else {
         const content = await response.text();
         const script = document.createElement('script');
@@ -209,7 +211,7 @@ const HCS: HCS = {
     const topicId = src?.split('/').pop();
 
     this.log('Loading image: ' + topicId);
-    this.updateLoadingStatus('Image: ' + topicId, 'loading');
+    this.updateLoadingStatus('Image: ' + topicId!, 'loading');
 
     try {
       const cdnUrl =
@@ -223,11 +225,11 @@ const HCS: HCS = {
       const objectURL = URL.createObjectURL(blob);
       (imageElement as HTMLImageElement).src = objectURL;
       this.LoadedImages[topicId!] = objectURL;
-      this.updateLoadingStatus('Image: ' + topicId, 'loaded');
+      this.updateLoadingStatus('Image: ' + topicId!, 'loaded');
       this.log('Loaded image: ' + topicId);
     } catch (error) {
       this.error('Failed to load image: ' + topicId, error);
-      this.updateLoadingStatus('Image: ' + topicId, 'failed');
+      this.updateLoadingStatus('Image: ' + topicId!, 'failed');
     }
   },
 
@@ -239,7 +241,7 @@ const HCS: HCS = {
     const topicId = src?.split('/').pop();
 
     this.log('Loading ' + mediaType + ': ' + topicId);
-    this.updateLoadingStatus(mediaType + ': ' + topicId, 'loading');
+    this.updateLoadingStatus(mediaType + ': ' + topicId!, 'loading');
 
     try {
       const cdnUrl =
@@ -259,11 +261,11 @@ const HCS: HCS = {
         this.LoadedAudios[topicId!] = objectURL;
       }
 
-      this.updateLoadingStatus(mediaType + ': ' + topicId, 'loaded');
+      this.updateLoadingStatus(mediaType + ': ' + topicId!, 'loaded');
       this.log('Loaded ' + mediaType + ': ' + topicId);
     } catch (error) {
       this.error('Failed to load ' + mediaType + ': ' + topicId, error);
-      this.updateLoadingStatus(mediaType + ': ' + topicId, 'failed');
+      this.updateLoadingStatus(mediaType + ': ' + topicId!, 'failed');
     }
   },
 
@@ -272,7 +274,7 @@ const HCS: HCS = {
     const topicId = src?.split('/').pop();
 
     this.log('Loading GLB: ' + topicId);
-    this.updateLoadingStatus('GLB: ' + topicId, 'loading');
+    this.updateLoadingStatus('GLB: ' + topicId!, 'loading');
 
     try {
       const cdnUrl =
@@ -287,12 +289,23 @@ const HCS: HCS = {
       (glbElement as any).src = objectURL; // Assuming model-viewer is used
       this.LoadedGLBs[topicId!] = objectURL;
 
-      this.updateLoadingStatus('GLB: ' + topicId, 'loaded');
+      this.updateLoadingStatus('GLB: ' + topicId!, 'loaded');
       this.log('Loaded GLB: ' + topicId);
     } catch (error) {
       this.error('Failed to load GLB: ' + topicId, error);
-      this.updateLoadingStatus('GLB: ' + topicId, 'failed');
+      this.updateLoadingStatus('GLB: ' + topicId!, 'failed');
     }
+  },
+
+  async loadResource(
+    element: HTMLElement,
+    type: string,
+    order: number
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      this.loadQueue.push({ element, type, order, resolve });
+      this.processQueue();
+    });
   },
 
   async processQueue(): Promise<void> {
@@ -300,24 +313,25 @@ const HCS: HCS = {
     this.isProcessingQueue = true;
 
     while (this.loadQueue.length > 0) {
-      const item = this.loadQueue.shift();
+      const item = this.loadQueue.shift()!;
       try {
-        if (item!.type === 'script') {
-          await this.loadScript(item!.element);
-        } else if (item!.type === 'image') {
-          await this.loadImage(item!.element);
-        } else if (item!.type === 'video' || item!.type === 'audio') {
-          await this.loadMedia(item!.element, item!.type);
-        } else if (item!.type === 'glb') {
-          await this.loadGLB(item!.element);
-        } else if (item!.type === 'css') {
-          await this.loadStylesheet(item!.element);
+        if (item.type === 'script') {
+          await this.loadScript(item.element);
+        } else if (item.type === 'image') {
+          await this.loadImage(item.element);
+        } else if (item.type === 'video' || item.type === 'audio') {
+          await this.loadMedia(item.element, item.type as 'video' | 'audio');
+        } else if (item.type === 'glb') {
+          await this.loadGLB(item.element);
+        } else if (item.type === 'css') {
+          await this.loadStylesheet(item.element);
         }
+        item.resolve();
       } catch (error) {
         this.error('Error processing queue item:', error);
         if (
-          item!.type === 'script' &&
-          item!.element.hasAttribute('data-required')
+          item.type === 'script' &&
+          item.element.hasAttribute('data-required')
         ) {
           break;
         }
@@ -327,23 +341,11 @@ const HCS: HCS = {
     this.isProcessingQueue = false;
   },
 
-  queueLoading(elements: NodeListOf<HTMLElement>, type: string): void {
-    elements.forEach((element) => {
-      const order =
-        parseInt(element.getAttribute('data-load-order') || '') || Infinity;
-      this.loadQueue.push({ element, type, order });
-    });
-
-    this.loadQueue.sort((a, b) => a.order - b.order);
-
-    this.processQueue();
-  },
-
-  init(): Promise<void> {
+  async init(): Promise<void> {
     this.loadConfigFromHTML();
 
-    return new Promise<void>((resolve) => {
-      const initializeObserver = () => {
+    return new Promise((resolve) => {
+      const initializeObserver = async () => {
         const scriptElements = document.querySelectorAll(
           'script[data-src^="hcs://"]'
         );
@@ -363,12 +365,27 @@ const HCS: HCS = {
           'link[data-src^="hcs://"]'
         );
 
-        this.queueLoading(scriptElements, 'script');
-        this.queueLoading(imageElements, 'image');
-        this.queueLoading(videoElements, 'video');
-        this.queueLoading(audioElements, 'audio');
-        this.queueLoading(glbElements, 'glb');
-        this.queueLoading(cssElements, 'css');
+        const loadPromises: Promise<void>[] = [];
+
+        [
+          { elements: scriptElements, type: 'script' },
+          { elements: imageElements, type: 'image' },
+          { elements: videoElements, type: 'video' },
+          { elements: audioElements, type: 'audio' },
+          { elements: glbElements, type: 'glb' },
+          { elements: cssElements, type: 'css' },
+        ].forEach(({ elements, type }) => {
+          elements.forEach((element) => {
+            const order =
+              parseInt(element.getAttribute('data-load-order') || '') ||
+              Infinity;
+            loadPromises.push(
+              this.loadResource(element as HTMLElement, type, order)
+            );
+          });
+        });
+
+        await Promise.all(loadPromises);
 
         const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
@@ -376,19 +393,19 @@ const HCS: HCS = {
               if (node.nodeType === Node.ELEMENT_NODE) {
                 const element = node as HTMLElement;
                 if (element.matches('script[data-src^="hcs://"]')) {
-                  this.queueLoading([element], 'script');
+                  this.loadResource(element, 'script', Infinity);
                 } else if (element.matches('img[data-src^="hcs://"]')) {
-                  this.queueLoading([element], 'image');
+                  this.loadResource(element, 'image', Infinity);
                 } else if (element.matches('video[data-src^="hcs://"]')) {
-                  this.queueLoading([element], 'video');
+                  this.loadResource(element, 'video', Infinity);
                 } else if (element.matches('audio[data-src^="hcs://"]')) {
-                  this.queueLoading([element], 'audio');
+                  this.loadResource(element, 'audio', Infinity);
                 } else if (
                   element.matches('model-viewer[data-src^="hcs://"]')
                 ) {
-                  this.queueLoading([element], 'glb');
+                  this.loadResource(element, 'glb', Infinity);
                 } else if (element.matches('link[data-src^="hcs://"]')) {
-                  this.queueLoading([element], 'css');
+                  this.loadResource(element, 'css', Infinity);
                 }
               }
             });
@@ -409,14 +426,7 @@ const HCS: HCS = {
           });
         }
 
-        const checkLoaded = () => {
-          if (this.loadQueue.length === 0) {
-            resolve();
-          } else {
-            requestAnimationFrame(checkLoaded);
-          }
-        };
-        checkLoaded();
+        resolve();
       };
 
       if (document.readyState === 'loading') {
@@ -426,31 +436,33 @@ const HCS: HCS = {
       }
     });
   },
+
   async preloadAudio(topicId: string) {
     const audioElement = document.createElement('audio');
     audioElement.setAttribute('data-topic-id', topicId);
     audioElement.setAttribute('data-src', 'hcs://1/' + topicId);
     document.body.appendChild(audioElement);
 
-    await window.HCS.loadMedia(audioElement, 'audio');
+    await this.loadMedia(audioElement, 'audio');
 
     const cachedAudio = document.querySelector(
       'audio[data-topic-id="' + topicId + '"]'
     ) as HTMLAudioElement;
 
     if (cachedAudio) {
-      window.HCS.LoadedAudioUrls[topicId] = cachedAudio.src;
+      this.LoadedAudioUrls[topicId] = cachedAudio.src;
     } else {
       console.error('Failed to preload audio: ' + topicId);
     }
   },
+
   async playAudio(topicId: string, volume = 1.0) {
-    const audioUrl = window?.HCS?.LoadedAudioUrls?.[topicId];
+    const audioUrl = this.LoadedAudioUrls[topicId];
 
     if (audioUrl) {
       const audio = new Audio(audioUrl);
       audio.volume = volume;
-      window.HCS.LoadedAudios[topicId] = audio;
+      this.LoadedAudios[topicId] = audio;
 
       audio.play().catch((error) => {
         console.error('Failed to play audio:', error);
@@ -458,7 +470,7 @@ const HCS: HCS = {
 
       audio.addEventListener('ended', () => {
         audio.remove();
-        delete window.HCS.LoadedAudios[topicId];
+        delete this.LoadedAudios[topicId];
       });
     } else {
       console.error('Audio not preloaded: ' + topicId);
@@ -473,9 +485,9 @@ const HCS: HCS = {
     if (audioElement) {
       console.log('found element', audioElement);
       audioElement.pause();
-      window?.HCS?.LoadedAudios?.[topicId]?.pause();
+      this.LoadedAudios[topicId]?.pause();
     } else {
-      window?.HCS?.LoadedAudios?.[topicId]?.pause();
+      this.LoadedAudios[topicId]?.pause();
     }
   },
 
@@ -502,7 +514,7 @@ const HCS: HCS = {
 
       existingAudioElement = document.querySelector(
         'audio[data-topic-id="' + topicId + '"]'
-      );
+      ) as HTMLAudioElement;
       if (!autoplay) {
         await existingAudioElement.play();
       }
@@ -510,12 +522,14 @@ const HCS: HCS = {
   },
 };
 
-window.HCS = HCS;
+(window as any).HCS = HCS;
 
 HCS.init().then(() => {
-  console.log('All HCS resources loaded', window.HCSReady);
-  if (typeof window.HCSReady === 'function') {
-    console.log('running start..');
-    window.HCSReady();
+  console.log('All HCS resources loaded');
+  if (typeof (window as any).HCSReady === 'function') {
+    console.log('Running HCSReady...');
+    (window as any).HCSReady();
   }
 });
+
+export default HCS;

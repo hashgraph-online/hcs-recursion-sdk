@@ -28,7 +28,7 @@ export interface HCS {
   config: HCSConfig;
   configMapping: HCSConfigMapping;
   LoadedScripts: Record<string, boolean>;
-  LoadedWasm: WebAssembly.Instance | null;
+  LoadedWasm:  Record<string, string>;
   LoadedImages: Record<string, string>;
   LoadedVideos: Record<string, string>;
   LoadedAudios: Record<string, HTMLAudioElement>;

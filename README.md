@@ -12,6 +12,29 @@ The Recursion SDK is a powerful and flexible tool designed to simplify the integ
 - Queue-based loading system with support for load order
 - Promise-based initialization
 
+## Examples Exploring Recursion
+
+Included in this repository are a number of examples demonstrating the capabilities of recursion.
+
+1. **Hashinals Blaster**: A simple, arcade style shooting game leveraging ThreeJS, AnimeJS, NESS-CSS, and Hashinals Wallet Connect.
+  - **Download** [Hashinals Blaster](./examples//hashinal-blaster.html)
+  - **Play** https://kiloscribe.com/inscription/0.0.6739314
+
+2. **HashiNova**: A complex, casual growth game where your entity grows by consuming Hashinals floating in the universe. It leverages ThreeJS, AnimeJS, NESS-CSS, Hashinals Wallet Connect, CannonJS, and follows the ECS (Entity Component System) framework for development.
+- **Download** [HashiNova](./examples/hashinova.html)
+- **Play** https://kiloscribe.com/inscription/0.0.6798739
+
+3. **Basic Recursion**: A simple example of Recursion demonstrating the capability of utilizing WASM inside of Inscribed Files.
+- **Download** [HashiNova](./examples/basic-recursion.html)
+- **Explore** https://kiloscribe.com/inscription/0.0.6796093?network=mainnet
+
+Exploring Further:
+- Visit https://kiloscribe.com/gaming
+  - Try the featured games and copy the code snippets to create your own experiences & games using HCS-3.
+- Implement Hashinals Wallet Connect:  https://github.com/hashgraph-online/hashinal-wc
+  - Add wallet capabilities to your HTML Hashinals with just a few lines of code.
+
+
 ## Usage
 
 Testing locally:
