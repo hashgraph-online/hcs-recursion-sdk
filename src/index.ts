@@ -1,48 +1,69 @@
-import { HCS, LoadQueueItem, HCSConfigMapping } from './types';
+import {
+  HCSSDK,
+  LoadQueueItem,
+  HCSConfigMapping,
+  HCSConfig,
+  LoadType,
+} from './types';
 
 export const sleep = (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-const HCS: HCS = {
-  config: {
-    cdnUrl: 'https://tier.bot/api/hashinals-cdn/',
-    network: 'mainnet',
-    retryAttempts: 3,
-    retryBackoff: 300,
-    debug: false,
-    showLoadingIndicator: false,
-    loadingCallbackName: null,
-  },
-  configMapping: {
-    hcsCdnUrl: 'cdnUrl',
-    hcsNetwork: 'network',
-    hcsRetryAttempts: 'retryAttempts',
-    hcsRetryBackoff: 'retryBackoff',
-    hcsDebug: 'debug',
-    hcsShowLoadingIndicator: 'showLoadingIndicator',
-    hcsLoadingCallbackName: 'loadingCallbackName',
-  },
-  LoadedScripts: {},
-  LoadedWasm: {},
-  LoadedImages: {},
-  LoadedVideos: {},
-  LoadedAudios: {},
-  LoadedAudioUrls: {},
-  LoadedGLBs: {},
-  scriptLoadedEvent: new Event('HCSScriptLoaded'),
-  loadQueue: [] as LoadQueueItem[],
-  isProcessingQueue: false,
+export class HCS implements HCSSDK {
+  config: HCSConfig;
+  configMapping: HCSConfigMapping;
+  LoadedScripts: Record<string, string>;
+  LoadedWasm: Record<string, WebAssembly.Instance>;
+  LoadedImages: Record<string, string>;
+  LoadedVideos: Record<string, string>;
+  LoadedAudios: Record<string, HTMLAudioElement>;
+  LoadedAudioUrls: Record<string, string>;
+  LoadedGLBs: Record<string, string>;
+  scriptLoadedEvent: Event;
+  loadQueue: LoadQueueItem[];
+  isProcessingQueue: boolean;
+
+  constructor() {
+    this.config = {
+      cdnUrl: 'https://tier.bot/api/hashinals-cdn/',
+      network: 'mainnet',
+      retryAttempts: 3,
+      retryBackoff: 300,
+      debug: false,
+      showLoadingIndicator: false,
+      loadingCallbackName: null,
+    };
+    this.configMapping = {
+      hcsCdnUrl: 'cdnUrl',
+      hcsNetwork: 'network',
+      hcsRetryAttempts: 'retryAttempts',
+      hcsRetryBackoff: 'retryBackoff',
+      hcsDebug: 'debug',
+      hcsShowLoadingIndicator: 'showLoadingIndicator',
+      hcsLoadingCallbackName: 'loadingCallbackName',
+    };
+    this.LoadedScripts = {};
+    this.LoadedWasm = {};
+    this.LoadedImages = {};
+    this.LoadedVideos = {};
+    this.LoadedAudios = {};
+    this.LoadedAudioUrls = {};
+    this.LoadedGLBs = {};
+    this.scriptLoadedEvent = new Event('HCSScriptLoaded');
+    this.loadQueue = [] as LoadQueueItem[];
+    this.isProcessingQueue = false;
+  }
 
   log(...args: any[]): void {
     if (this.config.debug) {
       console.log('[HCS SDK]', ...args);
     }
-  },
+  }
 
   error(...args: any[]): void {
     console.error('[HCS SDK]', ...args);
-  },
+  }
 
   loadConfigFromHTML(): void {
     const configScript = document.querySelector(
@@ -59,12 +80,12 @@ const HCS: HCS = {
           if (value === 'false') value = false;
           if (!isNaN(Number(value)) && value !== '') value = Number(value);
 
-          this.config[configKey] = value;
+          (this.config as any)[configKey] = value;
         }
       });
     }
     this.log('Loaded config:', this.config);
-  },
+  }
 
   updateLoadingStatus(id: string, status: string): void {
     if (this.LoadedScripts[id] === 'loaded') {
@@ -76,11 +97,14 @@ const HCS: HCS = {
     this.LoadedScripts[id] = status;
     if (
       this.config.loadingCallbackName &&
-      typeof window[this.config.loadingCallbackName] === 'function'
+      typeof (window as any)[this.config.loadingCallbackName] === 'function'
     ) {
-      (window[this.config.loadingCallbackName] as any as Function)(id, status);
+      const callback = (window as any)[this.config.loadingCallbackName];
+      if (typeof callback === 'function') {
+        callback(id, status);
+      }
     }
-  },
+  }
 
   async fetchWithRetry(
     url: string,
@@ -98,16 +122,31 @@ const HCS: HCS = {
         this.log(
           'Retrying fetch for ' + url + ' Attempts left: ' + (retries - 1)
         );
-        await sleep(backoff);
+        await this.sleep(backoff);
         return this.fetchWithRetry(url, retries - 1, backoff * 2);
       }
       throw error;
     }
-  },
+  }
+
+  sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   isDuplicate(topicId: string): boolean {
     return !!this.LoadedScripts[topicId];
-  },
+  }
+
+  async retrieveHCS1Data(
+    topicId: string,
+    cdnUrl: string = this.config.cdnUrl,
+    network: string = this.config.network
+  ): Promise<Blob> {
+    const response = await this.fetchWithRetry(
+      cdnUrl + topicId + '?network=' + network
+    );
+    return await response.blob();
+  }
 
   async loadScript(scriptElement: HTMLElement): Promise<void> {
     const src = scriptElement.getAttribute('data-src');
@@ -127,12 +166,11 @@ const HCS: HCS = {
         scriptElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
       const network =
         scriptElement.getAttribute('data-network') || this.config.network;
-      const response = await this.fetchWithRetry(
-        cdnUrl + topicId + '?network=' + network
-      );
+
+      const blob = await this.retrieveHCS1Data(topicId!, cdnUrl, network);
 
       if (type === 'wasm') {
-        const arrayBuffer = await response.arrayBuffer();
+        const arrayBuffer = await blob.arrayBuffer();
         const wasmModule = await WebAssembly.compile(arrayBuffer);
         this.LoadedWasm[scriptId!] = await WebAssembly.instantiate(wasmModule, {
           env: {},
@@ -141,9 +179,8 @@ const HCS: HCS = {
         this.updateLoadingStatus(scriptId!, 'loaded');
         window.dispatchEvent(this.scriptLoadedEvent);
         this.log('Loaded wasm: ' + scriptId);
-        return this.LoadedWasm[scriptId!];
       } else {
-        const content = await response.text();
+        const content = await blob.text();
         const script = document.createElement('script');
         script.textContent = content;
         document.body.appendChild(script);
@@ -167,7 +204,7 @@ const HCS: HCS = {
         throw error;
       }
     }
-  },
+  }
 
   async loadStylesheet(linkElement: HTMLElement): Promise<void> {
     const src = linkElement.getAttribute('data-src');
@@ -185,11 +222,9 @@ const HCS: HCS = {
         linkElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
       const network =
         linkElement.getAttribute('data-network') || this.config.network;
-      const response = await this.fetchWithRetry(
-        cdnUrl + topicId + '?network=' + network
-      );
 
-      const cssContent = await response.text();
+      const blob = await this.retrieveHCS1Data(topicId!, cdnUrl, network);
+      const cssContent = await blob.text();
       const style = document.createElement('style');
       style.textContent = cssContent;
       document.head.appendChild(style);
@@ -204,24 +239,22 @@ const HCS: HCS = {
         throw error;
       }
     }
-  },
+  }
 
   async loadImage(imageElement: HTMLElement): Promise<void> {
     const src = imageElement.getAttribute('data-src');
     const topicId = src?.split('/').pop();
 
     this.log('Loading image: ' + topicId);
-    this.updateLoadingStatus('Image: ' + topicId!, 'loading');
+    this.updateLoadingStatus('Image: ' + topicId!, 'loaded');
 
     try {
       const cdnUrl =
         imageElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
       const network =
         imageElement.getAttribute('data-network') || this.config.network;
-      const response = await this.fetchWithRetry(
-        cdnUrl + topicId + '?network=' + network
-      );
-      const blob = await response.blob();
+
+      const blob = await this.retrieveHCS1Data(topicId!, cdnUrl, network);
       const objectURL = URL.createObjectURL(blob);
       (imageElement as HTMLImageElement).src = objectURL;
       this.LoadedImages[topicId!] = objectURL;
@@ -231,7 +264,7 @@ const HCS: HCS = {
       this.error('Failed to load image: ' + topicId, error);
       this.updateLoadingStatus('Image: ' + topicId!, 'failed');
     }
-  },
+  }
 
   async loadMedia(
     mediaElement: HTMLElement,
@@ -248,17 +281,15 @@ const HCS: HCS = {
         mediaElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
       const network =
         mediaElement.getAttribute('data-network') || this.config.network;
-      const response = await this.fetchWithRetry(
-        cdnUrl + topicId + '?network=' + network
-      );
-      const blob = await response.blob();
+
+      const blob = await this.retrieveHCS1Data(topicId!, cdnUrl, network);
       const objectURL = URL.createObjectURL(blob);
       (mediaElement as HTMLMediaElement).src = objectURL;
 
       if (mediaType === 'video') {
         this.LoadedVideos[topicId!] = objectURL;
       } else {
-        this.LoadedAudios[topicId!] = objectURL;
+        this.LoadedAudioUrls[topicId!] = objectURL;
       }
 
       this.updateLoadingStatus(mediaType + ': ' + topicId!, 'loaded');
@@ -267,7 +298,7 @@ const HCS: HCS = {
       this.error('Failed to load ' + mediaType + ': ' + topicId, error);
       this.updateLoadingStatus(mediaType + ': ' + topicId!, 'failed');
     }
-  },
+  }
 
   async loadGLB(glbElement: HTMLElement): Promise<void> {
     const src = glbElement.getAttribute('data-src');
@@ -281,10 +312,8 @@ const HCS: HCS = {
         glbElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
       const network =
         glbElement.getAttribute('data-network') || this.config.network;
-      const response = await this.fetchWithRetry(
-        cdnUrl + topicId + '?network=' + network
-      );
-      const blob = await response.blob();
+
+      const blob = await this.retrieveHCS1Data(topicId!, cdnUrl, network);
       const objectURL = URL.createObjectURL(blob);
       (glbElement as any).src = objectURL; // Assuming model-viewer is used
       this.LoadedGLBs[topicId!] = objectURL;
@@ -295,18 +324,18 @@ const HCS: HCS = {
       this.error('Failed to load GLB: ' + topicId, error);
       this.updateLoadingStatus('GLB: ' + topicId!, 'failed');
     }
-  },
+  }
 
   async loadResource(
     element: HTMLElement,
-    type: string,
+    type: LoadType,
     order: number
   ): Promise<void> {
     return new Promise((resolve) => {
       this.loadQueue.push({ element, type, order, resolve });
       this.processQueue();
     });
-  },
+  }
 
   async processQueue(): Promise<void> {
     if (this.isProcessingQueue) return;
@@ -339,7 +368,7 @@ const HCS: HCS = {
     }
 
     this.isProcessingQueue = false;
-  },
+  }
 
   async init(): Promise<void> {
     this.loadConfigFromHTML();
@@ -380,7 +409,7 @@ const HCS: HCS = {
               parseInt(element.getAttribute('data-load-order') || '') ||
               Infinity;
             loadPromises.push(
-              this.loadResource(element as HTMLElement, type, order)
+              this.loadResource(element as HTMLElement, type as LoadType, order)
             );
           });
         });
@@ -435,9 +464,19 @@ const HCS: HCS = {
         initializeObserver();
       }
     });
-  },
+  }
 
-  async preloadAudio(topicId: string) {
+  async preloadImage(topicId: string): Promise<string> {
+    this.log('Loading image:' + topicId);
+    this.updateLoadingStatus('image: ' + topicId, 'loading');
+    const blob = await this.retrieveHCS1Data(topicId);
+    const objectURL = URL.createObjectURL(blob);
+    this.LoadedImages[topicId!] = objectURL;
+    this.updateLoadingStatus('image: ' + topicId, 'loaded');
+    return objectURL;
+  }
+
+  async preloadAudio(topicId: string): Promise<string> {
     const audioElement = document.createElement('audio');
     audioElement.setAttribute('data-topic-id', topicId);
     audioElement.setAttribute('data-src', 'hcs://1/' + topicId);
@@ -454,7 +493,8 @@ const HCS: HCS = {
     } else {
       console.error('Failed to preload audio: ' + topicId);
     }
-  },
+    return this.LoadedAudioUrls[topicId];
+  }
 
   async playAudio(topicId: string, volume = 1.0) {
     const audioUrl = this.LoadedAudioUrls[topicId];
@@ -475,7 +515,7 @@ const HCS: HCS = {
     } else {
       console.error('Audio not preloaded: ' + topicId);
     }
-  },
+  }
 
   async pauseAudio(topicId: string) {
     const audioElement = document.querySelector(
@@ -489,7 +529,7 @@ const HCS: HCS = {
     } else {
       this.LoadedAudios[topicId]?.pause();
     }
-  },
+  }
 
   async loadAndPlayAudio(topicId: string, autoplay = false, volume = 1.0) {
     let existingAudioElement = document.querySelector(
@@ -519,12 +559,12 @@ const HCS: HCS = {
         await existingAudioElement.play();
       }
     }
-  },
-};
+  }
+}
 
-(window as any).HCS = HCS;
+(window as any).HCS = new HCS();
 
-HCS.init().then(() => {
+(window as any).HCS.init().then(() => {
   console.log('All HCS resources loaded');
   if (typeof (window as any).HCSReady === 'function') {
     console.log('Running HCSReady...');
@@ -532,4 +572,4 @@ HCS.init().then(() => {
   }
 });
 
-export default HCS;
+export default (window as any).HCS;

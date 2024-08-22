@@ -1,7 +1,10 @@
+export type LoadType = 'script' | 'image' | 'video' | 'audio' | 'glb' | 'css';
+
 export interface LoadQueueItem {
   element: HTMLElement;
-  type: 'script' | 'image';
+  type: LoadType;
   order: number;
+  resolve: () => void;
 }
 
 export interface HCSConfig {
@@ -24,11 +27,11 @@ export interface HCSConfigMapping {
   hcsLoadingCallbackName: keyof HCSConfig;
 }
 
-export interface HCS {
+export interface HCSSDK {
   config: HCSConfig;
   configMapping: HCSConfigMapping;
-  LoadedScripts: Record<string, boolean>;
-  LoadedWasm:  Record<string, string>;
+  LoadedScripts: Record<string, string>;
+  LoadedWasm: Record<string, WebAssembly.Instance>;
   LoadedImages: Record<string, string>;
   LoadedVideos: Record<string, string>;
   LoadedAudios: Record<string, HTMLAudioElement>;
@@ -47,24 +50,34 @@ export interface HCS {
     retries?: number,
     backoff?: number
   ): Promise<Response>;
+  retrieveHCS1Data(
+    topicId: string,
+    cdnUrl?: string,
+    network?: string
+  ): Promise<Blob>;
   isDuplicate(topicId: string): boolean;
   loadScript(scriptElement: HTMLElement): Promise<void>;
   loadStylesheet(linkElement: HTMLElement): Promise<void>;
   loadImage(imageElement: HTMLElement): Promise<void>;
   loadMedia(videoElement: HTMLElement, mediaType: string): Promise<void>;
   loadGLB(glbElement: HTMLElement): Promise<void>;
+  loadResource(
+    element: HTMLElement,
+    type: string,
+    order: number
+  ): Promise<void>;
   processQueue(): Promise<void>;
-  queueLoading(elements: NodeListOf<HTMLElement>, type: string): void;
   loadAndPlayAudio(topicId: string, autoplay?: boolean, volume?: number): void;
   playAudio(topicId: string, volume?: number): void;
-  preloadAudio(topicId: string): void;
+  preloadAudio(topicId: string): Promise<string>;
+  preloadImage(topicId: string): Promise<string>;
   pauseAudio(topicId: string): void;
   init(): Promise<void>;
 }
 
 declare global {
   interface Window {
-    HCS: HCS;
+    HCS: HCSSDK;
     HCSReady?: () => void;
   }
 }
