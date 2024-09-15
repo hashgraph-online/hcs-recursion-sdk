@@ -39,7 +39,7 @@
       data-load-order="5"
     ></script>
     <script
-      data-src="hcs://1/0.0.6790163"
+      data-src="hcs://1/0.0.7153927"
       data-script-id="wallet-connect"
       data-load-order="4"
     ></script>
@@ -522,13 +522,13 @@
         console.log('All resources loaded, initializing game');
         let gameOver = false;
         let isLoggedIn = false;
-        const sdk = window?.HederaWalletConnectSDK;
+        const sdk = window?.HashinalsWalletConnectSDK;
         await window.HCS.preloadAudio('0.0.6735077'); // background music
         await window.HCS.preloadAudio('0.0.6718586'); // Balloon pop
         await window.HCS.preloadAudio('0.0.6718497'); // Bomb explosion
         await window.HCS.preloadAudio('0.0.6717862'); // Laser shoot
 
-        function updateAccountInfo(accountId, balance) {
+        async function updateAccountInfo(accountId, balance) {
           if (!accountId) {
             isLoggedIn = false;
             document.getElementById('connect-wallet-btn').style.display =
@@ -539,6 +539,10 @@
             document.getElementById('account-balance').textContent = ``;
             return;
           }
+          // example of getting user tokens, uncomment to try it out.
+          // const tokens = await sdk.getAccountTokens(accountId);
+          // console.log('tokens', tokens);
+
           isLoggedIn = true;
           document.getElementById(
             'account-id'
@@ -576,7 +580,7 @@
         const initAccount = async () => {
           const accountResponse = await sdk.initAccount(PROJECT_ID, APP_METADATA);
 
-          if (accountResponse.accountId) {
+          if (accountResponse && accountResponse.accountId) {
             updateAccountInfo(accountResponse.accountId, accountResponse.balance);
           }
         };
