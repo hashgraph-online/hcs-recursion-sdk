@@ -26,7 +26,7 @@ export class HCS implements HCSSDK {
 
   constructor() {
     this.config = {
-      cdnUrl: 'https://tier.bot/api/hashinals-cdn/',
+      cdnUrl: 'https://kiloscribe.com/api/inscription-cdn/',
       network: 'mainnet',
       retryAttempts: 3,
       retryBackoff: 300,

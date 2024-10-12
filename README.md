@@ -69,7 +69,7 @@ You can configure the SDK using data attributes on a script tag. Here's an examp
 
 ### Configuration Options
 
-- `data-hcs-cdn-url`: The base URL for the CDN hosting your HCS resources (default: "https://tier.bot/api/hashinals-cdn/")
+- `data-hcs-cdn-url`: The base URL for the CDN hosting your HCS resources (default: "https://kiloscribe.com/api/inscription-cdn/")
 - `data-hcs-network`: The Hedera network to use (default: "mainnet")
 - `data-hcs-debug`: Enable debug logging (default: false)
 - `data-hcs-retry-attempts`: Number of retry attempts for failed resource loads (default: 3)
