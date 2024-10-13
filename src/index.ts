@@ -154,6 +154,7 @@ export class HCS implements HCSSDK {
     const topicId = src?.split('/').pop();
     const type = scriptElement.getAttribute('type');
     const isRequired = scriptElement.hasAttribute('data-required');
+    const isModule = scriptElement.getAttribute('type') === 'module';
 
     if (this.isDuplicate(topicId || '')) {
       return;
@@ -183,6 +184,15 @@ export class HCS implements HCSSDK {
         const content = await blob.text();
         const script = document.createElement('script');
         script.textContent = content;
+
+        if (isModule) {
+          script.type = 'module';
+          const moduleBlob = new Blob([content], {
+            type: 'application/javascript',
+          });
+          script.src = URL.createObjectURL(moduleBlob);
+        }
+
         document.body.appendChild(script);
 
         this.updateLoadingStatus(scriptId!, 'loaded');
