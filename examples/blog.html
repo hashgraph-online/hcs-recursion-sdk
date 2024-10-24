@@ -230,15 +230,25 @@
                         } else {
                             imgElement.src = src;
                         }
+                    },
+                    reloadImages() {
+                        this.$nextTick(() => {
+                            this.posts.forEach(post => {
+                                const imgElement = this.$refs[`img-${post.id}`][0];
+                                this.loadHCSImage(imgElement, post.thumbnail);
+                            });
+                        });
+                    }
+                },
+                watch: {
+                    currentPage(newPage) {
+                        if (newPage === 'home') {
+                            this.reloadImages();
+                        }
                     }
                 },
                 mounted() {
-                    this.$nextTick(() => {
-                        this.posts.forEach(post => {
-                            const imgElement = this.$refs[`img-${post.id}`][0];
-                            this.loadHCSImage(imgElement, post.thumbnail);
-                        });
-                    });
+                    this.reloadImages();
                 }
             });
         };

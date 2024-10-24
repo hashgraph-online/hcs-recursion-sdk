@@ -39,7 +39,7 @@
       data-load-order="5"
     ></script>
     <script
-      data-src="hcs://1/0.0.7153927"
+      data-src="hcs://1/0.0.7337015"
       data-script-id="wallet-connect"
       data-load-order="4"
     ></script>
@@ -349,6 +349,87 @@
           z-index: 2001;
           font-size: 24px;
           pointer-events: auto;
+        }
+      }
+      @media (max-width: 1400px) {
+        #loading-container {
+          display: none;
+        }
+        #start-btn,
+        #mint-btn-2 {
+          font-size: 20px;
+          padding: 5px 10px;
+        }
+      }
+
+      @media (min-width: 769px) and (max-width: 1024px) {
+        body {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+          padding: 0;
+        }
+
+        #game-canvas {
+          width: 100%;
+          height: 100%;
+          max-width: none;
+          max-height: none;
+          border: none;
+        }
+
+        #game-ui {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 20px;
+          box-sizing: border-box;
+        }
+
+        #overlay {
+          width: 100%;
+          max-width: none;
+          text-align: center;
+          margin-bottom: 10px;
+        }
+
+        #controls {
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        #wallet-section {
+          width: 100%;
+          text-align: center;
+          margin-bottom: 10px;
+        }
+
+        #score {
+          position: static;
+          width: 100%;
+          text-align: center;
+          margin-bottom: 10px;
+        }
+
+        #author-section {
+          width: 100%;
+          justify-content: center;
+          margin-top: 10px;
+        }
+
+        #leaderboard-modal {
+          width: 90%;
+          max-width: 700px;
         }
       }
     </style>
@@ -905,6 +986,8 @@
           }
         }
 
+        let explodeBombLastPlayTime = 0;
+
         function explodeBomb(bomb) {
           const particleCount = 50;
           const particles = [];
@@ -913,7 +996,15 @@
             color: 0xff0000,
           });
 
-          window.HCS.playAudio('0.0.6718497', 0.5);
+          // Add debounce mechanism
+          if (
+            !explodeBombLastPlayTime ||
+            Date.now() - explodeBombLastPlayTime >= 2000
+          ) {
+            window.HCS.playAudio('0.0.6718497', 0.2);
+            explodeBombLastPlayTime = Date.now();
+          }
+
           for (let i = 0; i < particleCount; i++) {
             const particle = new THREE.Mesh(particleGeometry, particleMaterial);
             particle.position.copy(bomb.position);
@@ -1221,9 +1312,7 @@
           },
           false
         );
-        function isMobile() {
-          return window.innerWidth <= 768;
-        }
+
         function setupMobileUI() {
           if (isMobile()) {
             console.log('setting up mobile...');
@@ -1403,6 +1492,67 @@
 
         console.log('Game setup complete');
       };
+
+      function setupTabletUI() {
+        if (window.innerWidth > 768 && window.innerWidth <= 1024) {
+          const canvas = document.getElementById('game-canvas');
+          canvas.width = Math.min(window.innerWidth * 0.9, 800);
+          canvas.height = Math.min(window.innerHeight * 0.6, 600);
+          camera.aspect = canvas.width / canvas.height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(canvas.width, canvas.height);
+
+          // Adjust game elements for tablet view
+          balloons.scale.set(0.8, 0.8, 0.8);
+          bombs.scale.set(0.8, 0.8, 0.8);
+          hashinals.scale.set(0.8, 0.8, 0.8);
+          gun.scale.set(0.8, 0.8, 0.8);
+
+          // Adjust game boundaries
+          const aspectRatio = canvas.width / canvas.height;
+          camera.left = -5 * aspectRatio;
+          camera.right = 5 * aspectRatio;
+          camera.top = 5;
+          camera.bottom = -5;
+          camera.updateProjectionMatrix();
+        }
+      }
+
+      function isMobile() {
+          return window.innerWidth <= 768;
+      }
+
+      function handleResize() {
+        if (isMobile()) {
+          setupMobileUI();
+        } else if (window.innerWidth > 768 && window.innerWidth <= 1024) {
+          setupTabletUI();
+        } else {
+          // Reset to desktop view
+          const canvas = document.getElementById('game-canvas');
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          camera.aspect = canvas.width / canvas.height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(canvas.width, canvas.height);
+
+          balloons.scale.set(1, 1, 1);
+          bombs.scale.set(1, 1, 1);
+          hashinals.scale.set(1, 1, 1);
+          gun.scale.set(1, 1, 1);
+
+          camera.left = -10;
+          camera.right = 10;
+          camera.top = 10;
+          camera.bottom = -10;
+          camera.updateProjectionMatrix();
+        }
+      }
+
+      window.addEventListener('resize', handleResize);
+
+      // Call handleResize initially to set up the correct view
+      handleResize();
     </script>
   </body>
 </html>
