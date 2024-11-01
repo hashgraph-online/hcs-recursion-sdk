@@ -1,4 +1,3 @@
-import '@google/model-viewer';
 import {
   HCSSDK,
   LoadQueueItem,
@@ -24,6 +23,8 @@ export class HCS implements HCSSDK {
   scriptLoadedEvent: Event;
   loadQueue: LoadQueueItem[];
   isProcessingQueue: boolean;
+  private modelViewerLoaded: boolean = false;
+  private modelViewerLoading: Promise<void> | null = null;
 
   constructor() {
     this.config = {
@@ -311,7 +312,34 @@ export class HCS implements HCSSDK {
     }
   }
 
+  private async loadModelViewer(): Promise<void> {
+    if (this.modelViewerLoading) return this.modelViewerLoading;
+    if (this.modelViewerLoaded) return Promise.resolve();
+
+    this.modelViewerLoading = new Promise<void>((resolve) => {
+      const modelViewerScript = document.createElement('script');
+      modelViewerScript.setAttribute('data-src', 'hcs://1/0.0.7293044');
+      modelViewerScript.setAttribute('data-script-id', 'model-viewer');
+      modelViewerScript.setAttribute('type', 'module');
+
+      window.addEventListener(
+        'HCSScriptLoaded',
+        () => {
+          this.modelViewerLoaded = true;
+          resolve();
+        },
+        { once: true }
+      );
+
+      this.loadScript(modelViewerScript);
+    });
+
+    return this.modelViewerLoading;
+  }
+
   async loadGLB(glbElement: HTMLElement): Promise<void> {
+    await this.loadModelViewer();
+
     const src = glbElement.getAttribute('data-src');
     const topicId = src?.split('/').pop();
 
@@ -319,13 +347,15 @@ export class HCS implements HCSSDK {
     this.updateLoadingStatus('GLB: ' + topicId!, 'loading');
 
     try {
-      const cdnUrl = glbElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
-      const network = glbElement.getAttribute('data-network') || this.config.network;
+      const cdnUrl =
+        glbElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
+      const network =
+        glbElement.getAttribute('data-network') || this.config.network;
 
       let modelViewer: HTMLElement;
       if (glbElement.tagName.toLowerCase() !== 'model-viewer') {
         modelViewer = document.createElement('model-viewer');
-        Array.from(glbElement.attributes).forEach(attr => {
+        Array.from(glbElement.attributes).forEach((attr) => {
           modelViewer.setAttribute(attr.name, attr.value);
         });
         modelViewer.setAttribute('camera-controls', '');
