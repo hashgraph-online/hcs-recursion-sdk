@@ -7,8 +7,8 @@ export default defineConfig({
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
       name: 'HCSRecusionSDK',
-      fileName: () => `hcs-recursion-sdk.js`,
-      formats: ['umd'],
+      fileName: (format) => format === 'es' ? `hcs-recursion-sdk.esm.js` : `hcs-recursion-sdk.js`,
+      formats: ['umd', 'es'],
     },
     rollupOptions: {
       external: [], // No externals, include everything
@@ -18,6 +18,11 @@ export default defineConfig({
     },
     minify: 'terser',
     sourcemap: false,
+    terserOptions: {
+      format: {
+        comments: false
+      },
+    },
   },
   define: {
     'process.env': {},

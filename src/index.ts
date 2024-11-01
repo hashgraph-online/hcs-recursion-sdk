@@ -1,3 +1,4 @@
+import '@google/model-viewer';
 import {
   HCSSDK,
   LoadQueueItem,
@@ -318,14 +319,26 @@ export class HCS implements HCSSDK {
     this.updateLoadingStatus('GLB: ' + topicId!, 'loading');
 
     try {
-      const cdnUrl =
-        glbElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
-      const network =
-        glbElement.getAttribute('data-network') || this.config.network;
+      const cdnUrl = glbElement.getAttribute('data-cdn-url') || this.config.cdnUrl;
+      const network = glbElement.getAttribute('data-network') || this.config.network;
+
+      let modelViewer: HTMLElement;
+      if (glbElement.tagName.toLowerCase() !== 'model-viewer') {
+        modelViewer = document.createElement('model-viewer');
+        Array.from(glbElement.attributes).forEach(attr => {
+          modelViewer.setAttribute(attr.name, attr.value);
+        });
+        modelViewer.setAttribute('camera-controls', '');
+        modelViewer.setAttribute('auto-rotate', '');
+        modelViewer.setAttribute('ar', '');
+        glbElement.parentNode?.replaceChild(modelViewer, glbElement);
+      } else {
+        modelViewer = glbElement;
+      }
 
       const blob = await this.retrieveHCS1Data(topicId!, cdnUrl, network);
       const objectURL = URL.createObjectURL(blob);
-      (glbElement as any).src = objectURL; // Assuming model-viewer is used
+      modelViewer.setAttribute('src', objectURL);
       this.LoadedGLBs[topicId!] = objectURL;
 
       this.updateLoadingStatus('GLB: ' + topicId!, 'loaded');
