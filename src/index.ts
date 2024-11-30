@@ -144,8 +144,9 @@ export class HCS implements HCSSDK {
     cdnUrl: string = this.config.cdnUrl,
     network: string = this.config.network
   ): Promise<Blob> {
+    const cleanNetwork = network.replace(/['"]+/g, '');
     const response = await this.fetchWithRetry(
-      cdnUrl + topicId + '?network=' + network
+      cdnUrl + topicId + '?network=' + cleanNetwork
     );
     return await response.blob();
   }
@@ -186,6 +187,11 @@ export class HCS implements HCSSDK {
         const content = await blob.text();
         const script = document.createElement('script');
         script.textContent = content;
+        script.className = 'hcs-inline-script';
+        // Copy over the script ID to the inlined script
+        if (scriptId) {
+          script.setAttribute('data-loaded-script-id', scriptId);
+        }
 
         if (isModule) {
           script.type = 'module';
@@ -216,6 +222,20 @@ export class HCS implements HCSSDK {
         throw error;
       }
     }
+  }
+
+  async loadModuleExports(scriptId: string): Promise<any> {
+    const script = document.querySelector(
+      'script[data-loaded-script-id="' + scriptId + '"]'
+    );
+    if (!script) {
+      throw new Error('Module script with id ' + scriptId + ' not found');
+    }
+    const scriptSrc = script.getAttribute('src');
+    if (!scriptSrc) {
+      throw new Error('Module script ' + scriptId + ' has no src attribute');
+    }
+    return await import(scriptSrc);
   }
 
   async loadStylesheet(linkElement: HTMLElement): Promise<void> {
@@ -423,6 +443,77 @@ export class HCS implements HCSSDK {
     this.isProcessingQueue = false;
   }
 
+  private async replaceHCSInStyle(styleContent: string): Promise<string> {
+    let newContent = styleContent;
+    let startIndex = newContent.indexOf('hcs://');
+
+    while (startIndex !== -1) {
+      let endIndex = startIndex;
+      while (
+        endIndex < newContent.length &&
+        !["'", '"', ' ', ')'].includes(newContent[endIndex])
+      ) {
+        endIndex++;
+      }
+
+      const hcsUrl = newContent.substring(startIndex, endIndex);
+      const topicId = hcsUrl.split('/').pop()!;
+
+      try {
+        const cdnUrl = this.config.cdnUrl;
+        const network = this.config.network;
+
+        const blob = await this.retrieveHCS1Data(topicId, cdnUrl, network);
+        const objectURL = URL.createObjectURL(blob);
+
+        newContent =
+          newContent.substring(0, startIndex) +
+          objectURL +
+          newContent.substring(endIndex);
+
+        this.LoadedImages[topicId] = objectURL;
+        this.log('Replaced CSS HCS URL: ' + hcsUrl + ' with ' + objectURL);
+      } catch (error) {
+        this.error('Failed to load CSS image: ' + topicId, error);
+      }
+
+      startIndex = newContent.indexOf('hcs://', startIndex + 1);
+    }
+
+    return newContent;
+  }
+
+  private async processInlineStyles(): Promise<void> {
+    const elementsWithStyle = document.querySelectorAll('[style*="hcs://"]');
+    this.log(
+      'Found ' +
+        elementsWithStyle.length +
+        ' elements with HCS style references'
+    );
+
+    for (const element of Array.from(elementsWithStyle)) {
+      const style = element.getAttribute('style');
+      if (style) {
+        this.log('Processing style: ' + style);
+        const newStyle = await this.replaceHCSInStyle(style);
+        if (style !== newStyle) {
+          element.setAttribute('style', newStyle);
+          this.log('Updated style to: ' + newStyle);
+        }
+      }
+    }
+
+    const styleTags = document.querySelectorAll('style');
+    for (const styleTag of Array.from(styleTags)) {
+      if (styleTag.textContent?.includes('hcs://')) {
+        const newContent = await this.replaceHCSInStyle(styleTag.textContent);
+        if (styleTag.textContent !== newContent) {
+          styleTag.textContent = newContent;
+        }
+      }
+    }
+  }
+
   async init(): Promise<void> {
     this.loadConfigFromHTML();
 
@@ -446,6 +537,8 @@ export class HCS implements HCSSDK {
         const cssElements = document.querySelectorAll(
           'link[data-src^="hcs://"]'
         );
+
+        await this.processInlineStyles();
 
         const loadPromises: Promise<void>[] = [];
 
@@ -474,6 +567,18 @@ export class HCS implements HCSSDK {
             mutation.addedNodes.forEach((node) => {
               if (node.nodeType === Node.ELEMENT_NODE) {
                 const element = node as HTMLElement;
+
+                if (element.getAttribute('style')?.includes('hcs://')) {
+                  this.processInlineStyles();
+                }
+
+                if (
+                  element.tagName.toLowerCase() === 'style' &&
+                  element.textContent?.includes('hcs://')
+                ) {
+                  this.processInlineStyles();
+                }
+
                 if (element.matches('script[data-src^="hcs://"]')) {
                   this.loadResource(element, 'script', Infinity);
                 } else if (element.matches('img[data-src^="hcs://"]')) {
@@ -491,6 +596,16 @@ export class HCS implements HCSSDK {
                 }
               }
             });
+
+            if (
+              mutation.type === 'attributes' &&
+              mutation.attributeName === 'style'
+            ) {
+              const element = mutation.target as HTMLElement;
+              if (element.getAttribute('style')?.includes('hcs://')) {
+                this.processInlineStyles();
+              }
+            }
           });
         });
 
@@ -498,12 +613,16 @@ export class HCS implements HCSSDK {
           observer.observe(document.body, {
             childList: true,
             subtree: true,
+            attributes: true,
+            attributeFilter: ['style'],
           });
         } else {
           document.addEventListener('DOMContentLoaded', () => {
             observer.observe(document.body, {
               childList: true,
               subtree: true,
+              attributes: true,
+              attributeFilter: ['style'],
             });
           });
         }
