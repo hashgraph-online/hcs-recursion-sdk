@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 const projectName = process.argv[2] || 'recursion-app';
 const projectPath = path.join(process.cwd(), projectName);
 
-const sdkPath = path.join(__dirname, '../dist/hcs-recursion-sdk.esm.js');
+const sdkPath = path.join(__dirname, '../dist/hcs-recursion-sdk.js');
 const sdkContent = fs.readFileSync(sdkPath, 'utf8');
 
 const createProject = async () => {
