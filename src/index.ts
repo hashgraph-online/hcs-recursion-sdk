@@ -523,13 +523,13 @@ export class HCS implements HCSSDK {
           'script[data-src^="hcs://"]'
         );
         const imageElements = document.querySelectorAll(
-          'img[data-src^="hcs://"]'
+          'img[data-src^="hcs://"], img[src^="hcs://"]'
         );
         const videoElements = document.querySelectorAll(
-          'video[data-src^="hcs://"]'
+          'video[data-src^="hcs://"], video[src^="hcs://"]'
         );
         const audioElements = document.querySelectorAll(
-          'audio[data-src^="hcs://"]'
+          'audio[data-src^="hcs://"], audio[src^="hcs://"]'
         );
         const glbElements = document.querySelectorAll(
           'model-viewer[data-src^="hcs://"]'
@@ -537,6 +537,15 @@ export class HCS implements HCSSDK {
         const cssElements = document.querySelectorAll(
           'link[data-src^="hcs://"]'
         );
+
+        // Convert src to data-src for HCS URLs
+        document.querySelectorAll('[src^="hcs://"]').forEach((element) => {
+          const src = element.getAttribute('src');
+          if (src) {
+            element.setAttribute('data-src', src);
+            element.removeAttribute('src');
+          }
+        });
 
         await this.processInlineStyles();
 
@@ -579,6 +588,31 @@ export class HCS implements HCSSDK {
                   this.processInlineStyles();
                 }
 
+                // Handle both src and data-src attributes
+                if (element.getAttribute('src')?.startsWith('hcs://')) {
+                  const src = element.getAttribute('src')!;
+                  element.setAttribute('data-src', src);
+                  element.removeAttribute('src');
+                  
+                  // Immediately process the element based on its type
+                  const tagName = element.tagName.toLowerCase();
+                  switch (tagName) {
+                    case 'img':
+                      this.loadResource(element, 'image', Infinity);
+                      break;
+                    case 'video':
+                      this.loadResource(element, 'video', Infinity);
+                      break;
+                    case 'audio':
+                      this.loadResource(element, 'audio', Infinity);
+                      break;
+                    case 'script':
+                      this.loadResource(element, 'script', Infinity);
+                      break;
+                  }
+                }
+
+                // Also check data-src in case it was set directly
                 if (element.matches('script[data-src^="hcs://"]')) {
                   this.loadResource(element, 'script', Infinity);
                 } else if (element.matches('img[data-src^="hcs://"]')) {
@@ -594,16 +628,61 @@ export class HCS implements HCSSDK {
                 } else if (element.matches('link[data-src^="hcs://"]')) {
                   this.loadResource(element, 'css', Infinity);
                 }
+
+                // Check children of added nodes for HCS URLs
+                const childrenWithHCS = element.querySelectorAll('[data-src^="hcs://"], [src^="hcs://"]');
+                childrenWithHCS.forEach(child => {
+                  const childElement = child as HTMLElement;
+                  const tagName = childElement.tagName.toLowerCase();
+                  
+                  // Convert src to data-src if needed
+                  const src = childElement.getAttribute('src');
+                  if (src?.startsWith('hcs://')) {
+                    childElement.setAttribute('data-src', src);
+                    childElement.removeAttribute('src');
+                  }
+
+                  // Process based on tag type
+                  switch (tagName) {
+                    case 'script':
+                      this.loadResource(childElement, 'script', Infinity);
+                      break;
+                    case 'img':
+                      this.loadResource(childElement, 'image', Infinity);
+                      break;
+                    case 'video':
+                      this.loadResource(childElement, 'video', Infinity);
+                      break;
+                    case 'audio':
+                      this.loadResource(childElement, 'audio', Infinity);
+                      break;
+                    case 'model-viewer':
+                      this.loadResource(childElement, 'glb', Infinity);
+                      break;
+                    case 'link':
+                      this.loadResource(childElement, 'css', Infinity);
+                      break;
+                  }
+                });
               }
             });
 
-            if (
-              mutation.type === 'attributes' &&
-              mutation.attributeName === 'style'
-            ) {
+            // Handle attribute changes
+            if (mutation.type === 'attributes') {
               const element = mutation.target as HTMLElement;
-              if (element.getAttribute('style')?.includes('hcs://')) {
+              if (mutation.attributeName === 'style' && 
+                  element.getAttribute('style')?.includes('hcs://')) {
                 this.processInlineStyles();
+              } else if (mutation.attributeName === 'src') {
+                const src = element.getAttribute('src');
+                if (src?.startsWith('hcs://')) {
+                  element.setAttribute('data-src', src);
+                  element.removeAttribute('src');
+                  const type = element.tagName.toLowerCase();
+                  if (['img', 'video', 'audio'].includes(type)) {
+                    this.loadResource(element, type as LoadType, Infinity);
+                  }
+                }
               }
             }
           });
@@ -614,7 +693,7 @@ export class HCS implements HCSSDK {
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ['style'],
+            attributeFilter: ['style', 'src', 'data-src'],
           });
         } else {
           document.addEventListener('DOMContentLoaded', () => {
@@ -622,7 +701,7 @@ export class HCS implements HCSSDK {
               childList: true,
               subtree: true,
               attributes: true,
-              attributeFilter: ['style'],
+              attributeFilter: ['style', 'src', 'data-src'],
             });
           });
         }

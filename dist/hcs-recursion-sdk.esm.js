@@ -396,13 +396,13 @@ class HCS {
           'script[data-src^="hcs://"]'
         );
         const imageElements = document.querySelectorAll(
-          'img[data-src^="hcs://"]'
+          'img[data-src^="hcs://"], img[src^="hcs://"]'
         );
         const videoElements = document.querySelectorAll(
-          'video[data-src^="hcs://"]'
+          'video[data-src^="hcs://"], video[src^="hcs://"]'
         );
         const audioElements = document.querySelectorAll(
-          'audio[data-src^="hcs://"]'
+          'audio[data-src^="hcs://"], audio[src^="hcs://"]'
         );
         const glbElements = document.querySelectorAll(
           'model-viewer[data-src^="hcs://"]'
@@ -410,6 +410,13 @@ class HCS {
         const cssElements = document.querySelectorAll(
           'link[data-src^="hcs://"]'
         );
+        document.querySelectorAll('[src^="hcs://"]').forEach((element) => {
+          const src = element.getAttribute("src");
+          if (src) {
+            element.setAttribute("data-src", src);
+            element.removeAttribute("src");
+          }
+        });
         await this.processInlineStyles();
         const loadPromises = [];
         [
@@ -432,7 +439,7 @@ class HCS {
           mutations.forEach((mutation) => {
             var _a;
             mutation.addedNodes.forEach((node) => {
-              var _a2, _b;
+              var _a2, _b, _c;
               if (node.nodeType === Node.ELEMENT_NODE) {
                 const element = node;
                 if ((_a2 = element.getAttribute("style")) == null ? void 0 : _a2.includes("hcs://")) {
@@ -440,6 +447,26 @@ class HCS {
                 }
                 if (element.tagName.toLowerCase() === "style" && ((_b = element.textContent) == null ? void 0 : _b.includes("hcs://"))) {
                   this.processInlineStyles();
+                }
+                if ((_c = element.getAttribute("src")) == null ? void 0 : _c.startsWith("hcs://")) {
+                  const src = element.getAttribute("src");
+                  element.setAttribute("data-src", src);
+                  element.removeAttribute("src");
+                  const tagName = element.tagName.toLowerCase();
+                  switch (tagName) {
+                    case "img":
+                      this.loadResource(element, "image", Infinity);
+                      break;
+                    case "video":
+                      this.loadResource(element, "video", Infinity);
+                      break;
+                    case "audio":
+                      this.loadResource(element, "audio", Infinity);
+                      break;
+                    case "script":
+                      this.loadResource(element, "script", Infinity);
+                      break;
+                  }
                 }
                 if (element.matches('script[data-src^="hcs://"]')) {
                   this.loadResource(element, "script", Infinity);
@@ -454,12 +481,52 @@ class HCS {
                 } else if (element.matches('link[data-src^="hcs://"]')) {
                   this.loadResource(element, "css", Infinity);
                 }
+                const childrenWithHCS = element.querySelectorAll('[data-src^="hcs://"], [src^="hcs://"]');
+                childrenWithHCS.forEach((child) => {
+                  const childElement = child;
+                  const tagName = childElement.tagName.toLowerCase();
+                  const src = childElement.getAttribute("src");
+                  if (src == null ? void 0 : src.startsWith("hcs://")) {
+                    childElement.setAttribute("data-src", src);
+                    childElement.removeAttribute("src");
+                  }
+                  switch (tagName) {
+                    case "script":
+                      this.loadResource(childElement, "script", Infinity);
+                      break;
+                    case "img":
+                      this.loadResource(childElement, "image", Infinity);
+                      break;
+                    case "video":
+                      this.loadResource(childElement, "video", Infinity);
+                      break;
+                    case "audio":
+                      this.loadResource(childElement, "audio", Infinity);
+                      break;
+                    case "model-viewer":
+                      this.loadResource(childElement, "glb", Infinity);
+                      break;
+                    case "link":
+                      this.loadResource(childElement, "css", Infinity);
+                      break;
+                  }
+                });
               }
             });
-            if (mutation.type === "attributes" && mutation.attributeName === "style") {
+            if (mutation.type === "attributes") {
               const element = mutation.target;
-              if ((_a = element.getAttribute("style")) == null ? void 0 : _a.includes("hcs://")) {
+              if (mutation.attributeName === "style" && ((_a = element.getAttribute("style")) == null ? void 0 : _a.includes("hcs://"))) {
                 this.processInlineStyles();
+              } else if (mutation.attributeName === "src") {
+                const src = element.getAttribute("src");
+                if (src == null ? void 0 : src.startsWith("hcs://")) {
+                  element.setAttribute("data-src", src);
+                  element.removeAttribute("src");
+                  const type = element.tagName.toLowerCase();
+                  if (["img", "video", "audio"].includes(type)) {
+                    this.loadResource(element, type, Infinity);
+                  }
+                }
               }
             }
           });
@@ -469,7 +536,7 @@ class HCS {
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ["style"]
+            attributeFilter: ["style", "src", "data-src"]
           });
         } else {
           document.addEventListener("DOMContentLoaded", () => {
@@ -477,7 +544,7 @@ class HCS {
               childList: true,
               subtree: true,
               attributes: true,
-              attributeFilter: ["style"]
+              attributeFilter: ["style", "src", "data-src"]
             });
           });
         }

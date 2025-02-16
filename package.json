@@ -1,11 +1,15 @@
 {
   "name": "@hashgraphonline/recursion-sdk",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "HCS Recursion SDK",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
+  "bin": {
+    "create-recursion-app": "./bin/create-recursion-app.js"
+  },
   "main": "./dist/hcs-recursion-sdk.js",
   "module": "./dist/hcs-recursion-sdk.esm.js",
   "types": "./dist/index.d.ts",
@@ -32,6 +36,8 @@
     "webpack-dev-server": "^5.0.4"
   },
   "dependencies": {
-    "@google/model-viewer": "^4.0.0"
+    "@google/model-viewer": "^4.0.0",
+    "open": "^9.1.0",
+    "serve-handler": "^6.1.5"
   }
 }
