@@ -1,6 +1,6 @@
 {
   "name": "@hashgraphonline/recursion-sdk",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "HCS Recursion SDK",
   "type": "module",
   "files": [
@@ -8,7 +8,7 @@
     "bin"
   ],
   "bin": {
-    "create-recursion-app": "./bin/create-recursion-app.js"
+    "recursion-sdk": "./bin/create-recursion-app.js"
   },
   "main": "./dist/hcs-recursion-sdk.js",
   "module": "./dist/hcs-recursion-sdk.esm.js",
